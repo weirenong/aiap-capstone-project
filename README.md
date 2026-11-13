@@ -111,3 +111,59 @@ Vaze, S., Han, K., Vedaldi, A., & Zisserman, A. (2022). Open-set recognition: a 
 Yang, J., Wang, P., Zou, D., Zhou, Z., Ding, K., Peng, W., Wang, H., Chen, G., Li, B., Sun, Y., Du, X., Zhou, K., Zhang, W., Hendrycks, D., Li, Y., & Liu, Z. (2022). OpenOOD: benchmarking generalized out-of-distribution detection. *NeurIPS Datasets and Benchmarks*. arXiv:2210.07242
 
 Zhou, D.-W., Ye, H.-J., & Zhan, D.-C. (2021). Learning placeholders for open-set recognition. *CVPR*. doi:10.1109/CVPR.2021.00438
+
+---
+
+## Sprint 2: Exploratory Data Analysis
+
+Full analysis and plots are in `eda.ipynb`; this is the summary of what it found and what it changes.
+
+**Data.** `data/synthetic_data_243.csv`, 1,000 rows, 8 columns. Target is `clicked_ad` (binary). Features: `user_age` and `previous_clicks_on_similar_ads` (numeric), plus `gender`, `device_type`, `time_of_day`, `ad_placement_position`, `ad_category` (categorical).
+
+### Data quality
+
+The file is unusually clean for a project dataset: **no missing values, no duplicate rows, and all 1,000 rows have a unique feature combination.** So imputation and de-duplication aren't workstreams at all, and there's no risk of a dedup step silently changing the split.
+
+Two things do need a decision:
+
+- **45 rows have `user_age` under 18**, minimum 6.99. For an ad-click problem that's a legal and ethical issue more than a modelling one, and it also puts a tail on the age distribution that isn't the target population. Filter it or document it, but decide before splitting.
+- **`previous_clicks_on_similar_ads` is 99.4% fractional**, so despite the name it isn't a count in this file — it's a continuous variable. Treat it as continuous and don't build "has never clicked" style features without agreeing where the cut goes.
+
+### The target
+
+20 positives out of 1,000 — a 2.0% click rate, a 1:49 imbalance, and 98% accuracy for a model that predicts "none" every time (95% Wilson interval on the rate: 1.3%–3.1%).
+
+Two consequences. Accuracy is useless as a headline metric, which was already the assumption from Sprint 1. And **20 positives is small enough that one misclassified click moves recall by 5 percentage points**, so a recall estimate carries a 95% interval around ±20pp. Differences under roughly 10pp between models are not meaningful on this data, and that constraint should be stated in the results rather than papered over.
+
+### What actually predicts a click
+
+`previous_clicks_on_similar_ads` is the whole story. Clickers average 0.45 prior clicks, non-clickers 1.96 (Welch p ≈ 0, Mann-Whitney p ≈ 0), and binned, the click rate is 15.8% at or below 0.5 prior clicks and **0 out of 391 rows above 2**. The direction is counter-intuitive — more prior clicks means less likely to click — which in synthetic data probably reflects how the generator was parameterised rather than user behaviour. Worth saying out loud instead of interpreting it.
+
+`ad_category` is the only other feature with a plausible effect (chi² = 22.76, p = 0.0004): Gaming 7.0%, Travel and Education 4.0%, Technology 0.8%, E-commerce and Finance 0.7%. Gender is borderline (p = 0.12) but that's 6 clicks among 480 women and 0 among 40 in the "Other" level, so it's noise as much as signal. Device type, time of day and placement position show nothing (p > 0.5). `user_age` is flat (p = 0.63).
+
+Mutual information agrees on the top feature and then falls apart — Gaming scores 0.000 despite having the highest click rate, and `time_of_day_Evening` ranks second despite a non-significant chi-square. With 20 positives those tail rankings are unstable across seeds, so MI is confirmation that one feature dominates, not a feature-selection ranking.
+
+### The baseline to beat
+
+A single threshold, `previous_clicks_on_similar_ads <= 0.5`, gives **recall 0.80 at precision 0.16** — 85 false positives, an 8.5% flag rate against a 2% base rate. Pushing to `<= 1.31` catches all 20 clicks but flags 390 rows (precision 0.05). Any model that can't beat 0.80 recall at an 8.5% flag rate has added nothing, so the single-rule result is the thing every later model gets compared to.
+
+### What this means for the "None" problem
+
+Two readings, and they need different evaluation:
+
+- **As built**, the none class is the 98% background: "this user clicks none of the ads". The project is entirely about the minority class and about keeping the false-positive rate usable, which is the framing the rest of the work should use.
+- **As an open-set problem**, `ad_category` is the natural class space: train on five categories, hold one out, and check whether clicks on the held-out category get flagged as none or confidently misclassified. This is the honest open-set test for tabular data, but it's underpowered here — holding out Travel leaves 6 positives, holding out Gaming removes 7 of the 20. Feasible as a sanity check, not as a headline result.
+
+### Preprocessing decisions
+
+- No imputation pipeline needed; no dedup step.
+- One-hot encoding for all categoricals — max cardinality is 6 (`ad_category`), so no target encoding and no encoding leakage risk.
+- Scaling only matters for logistic regression and k-NN, and it goes inside the pipeline either way.
+- Class weights first, threshold tuning second, resampling only as a comparison and only inside the fold.
+- Metrics: PR-AUC and recall at a fixed flag rate (8.5% or 10%) as the primary pair, accuracy and ROC-AUC as secondary, and the spread across folds reported instead of a bare number.
+- Validation: repeated stratified 5-fold, because 10-fold leaves about 2 positives per fold and 5-fold about 4 — either is thin, so repeated 5-fold with a reported spread is the least misleading option.
+- Leakage risk: nothing in the columns is a proxy for the label and nothing is computed after the click, so the realistic risk is only resampling or feature selection outside the split.
+
+### Limitations of this EDA
+
+One dataset of 1,000 rows and 20 positives. Every p-value above is indicative at best — several expected cell counts in the chi-square are around 1 — and the correlations are dominated by a single-lever synthetic generator. The open-set variant of the problem can't be evaluated credibly at this sample size.
