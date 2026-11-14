@@ -275,6 +275,7 @@ def cross_validate_models(
         .agg(
             pr_auc_mean=("pr_auc", "mean"),
             pr_auc_std=("pr_auc", "std"),
+            brier_mean=("brier", "mean"),
             roc_auc_mean=("roc_auc", "mean"),
             roc_auc_std=("roc_auc", "std"),
             recall_mean=("recall", "mean"),

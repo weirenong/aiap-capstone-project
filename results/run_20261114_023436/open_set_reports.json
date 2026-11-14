@@ -1,0 +1,35 @@
+[
+  {
+    "holdout": "Gaming",
+    "auroc": 0.6419874554175378,
+    "aupr": 0.4367137679902249,
+    "detection_rate_at_5fpr": 0.031914893617021274,
+    "known_mean_none_score": 0.07345618310929768,
+    "unknown_mean_none_score": 0.09930604215761066,
+    "n_known": 173,
+    "n_unknown": 94,
+    "threshold_at_5fpr": 0.3578034224910587
+  },
+  {
+    "holdout": "Travel",
+    "auroc": 0.6069758462396498,
+    "aupr": 0.5244315474600221,
+    "detection_rate_at_5fpr": 0.07692307692307693,
+    "known_mean_none_score": 0.09145653584679597,
+    "unknown_mean_none_score": 0.1149261470707437,
+    "n_known": 163,
+    "n_unknown": 143,
+    "threshold_at_5fpr": 0.3759535568261918
+  },
+  {
+    "holdout": "Education",
+    "auroc": 0.6445603576751118,
+    "aupr": 0.27561633877407443,
+    "detection_rate_at_5fpr": 0.045454545454545456,
+    "known_mean_none_score": 0.09343583377753703,
+    "unknown_mean_none_score": 0.13987559629781557,
+    "n_known": 183,
+    "n_unknown": 44,
+    "threshold_at_5fpr": 0.36616447159489013
+  }
+]

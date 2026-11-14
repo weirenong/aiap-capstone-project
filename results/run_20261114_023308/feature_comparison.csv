@@ -1,0 +1,7 @@
+feature_set,n_features,pr_auc_mean,pr_auc_std,recall_mean,recall_std
++prior history + select (MI),12,0.2705,0.1372,0.622,0.197
++prior history + age bands,29,0.2641,0.1614,0.582,0.211
++prior history,24,0.2581,0.1481,0.593,0.22
++prior history + interactions,53,0.2424,0.1601,0.552,0.231
++prior history + select (l1),12,0.2408,0.1329,0.597,0.214
+raw (no derived),22,0.2299,0.1499,0.49,0.249

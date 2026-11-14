@@ -1,0 +1,50 @@
+[
+  {
+    "model": "always none (floor)",
+    "pr_auc_mean": 0.0199,
+    "pr_auc_std": 0.0021,
+    "roc_auc_mean": 0.5,
+    "roc_auc_std": 0.0,
+    "brier_mean": 0.0199
+  },
+  {
+    "model": "hist gradient boosting",
+    "pr_auc_mean": 0.1976,
+    "pr_auc_std": 0.1239,
+    "roc_auc_mean": 0.8535,
+    "roc_auc_std": 0.0938,
+    "brier_mean": 0.0222
+  },
+  {
+    "model": "logistic (prior-clicks only)",
+    "pr_auc_mean": 0.3251,
+    "pr_auc_std": 0.1577,
+    "roc_auc_mean": 0.9037,
+    "roc_auc_std": 0.0542,
+    "brier_mean": 0.1109
+  },
+  {
+    "model": "logistic regression",
+    "pr_auc_mean": 0.2581,
+    "pr_auc_std": 0.1496,
+    "roc_auc_mean": 0.8221,
+    "roc_auc_std": 0.0985,
+    "brier_mean": 0.0951
+  },
+  {
+    "model": "prior-history rule",
+    "pr_auc_mean": 0.3899,
+    "pr_auc_std": 0.1656,
+    "roc_auc_mean": 0.9127,
+    "roc_auc_std": 0.0486,
+    "brier_mean": 0.0918
+  },
+  {
+    "model": "random forest",
+    "pr_auc_mean": 0.2645,
+    "pr_auc_std": 0.1618,
+    "roc_auc_mean": 0.874,
+    "roc_auc_std": 0.0837,
+    "brier_mean": 0.0317
+  }
+]

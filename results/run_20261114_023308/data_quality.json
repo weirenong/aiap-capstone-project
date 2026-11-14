@@ -1,0 +1,21 @@
+{
+  "filter_report": {
+    "auroc": 0.6445603576751118,
+    "aupr": 0.27561633877407443,
+    "detection_rate_at_5fpr": 0.045454545454545456,
+    "known_mean_none_score": 0.09343583377753703,
+    "unknown_mean_none_score": 0.13987559629781557,
+    "n_known": 183,
+    "n_unknown": 44,
+    "threshold_at_5fpr": 0.36616447159489013
+  },
+  "rows_used": 955,
+  "positive_rate": 0.019895287958115182,
+  "split": {
+    "train_rows": 764,
+    "test_rows": 191,
+    "train_positives": 15,
+    "test_positives": 4,
+    "random_state": 42
+  }
+}

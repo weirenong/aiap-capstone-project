@@ -396,7 +396,7 @@ def main() -> None:
     print("\nOpen-set behaviour, held-out ad_category as the unknown class")
     print("(none score = 1 - max predicted probability; higher = more none-like)")
 
-    known_frames, unknown_results = {}, []
+    known_frames, unknown_results, open_set_reports = {}, [], []
     for holdout in ["Gaming", "Travel", "Education"]:
         X_tr, X_te, y_tr, y_te, unknown_df = make_open_set_split(df, holdout)
         report, _ = open_set_report(
@@ -404,6 +404,7 @@ def main() -> None:
                 LogisticRegression(max_iter=1000, class_weight="balanced", random_state=RANDOM_STATE)
             )
         )
+        open_set_reports.append({"holdout": holdout, **report.as_dict()})
         unknown_results.append(
             {
                 "holdout": holdout,
@@ -418,6 +419,127 @@ def main() -> None:
     print("\n0.5 AUROC is chance. These are 0.61-0.65 — barely above it, and at a 5% "
           "false-positive budget the score catches 3-8% of unknowns, so in practice it "
           "detects nothing. That is the gap Sprint 1 named, measured on three holdouts.")
+
+    rule("11. Persisting results")
+
+    from src.artifacts import (
+        compare_runs,
+        load_frame,
+        load_json,
+        load_latest_run,
+        load_model,
+        new_run_dir,
+        save_frame,
+        save_json,
+        save_model,
+        write_index,
+        write_manifest,
+        write_pointer,
+    )
+    from src.preprocessing import DEFAULT_DATA_PATH
+
+    run_dir = new_run_dir()
+    print(f"run directory: {run_dir}")
+
+    unknown_table = pd.DataFrame(unknown_results)
+
+    saved = {}
+    saved["data_quality"] = save_json(
+        {
+            "filter_report": report,
+            "rows_used": int(len(df)),
+            "positive_rate": positive_rate(df[TARGET]),
+            "split": {
+                "train_rows": int(len(X_train)),
+                "test_rows": int(len(X_test)),
+                "train_positives": int(y_train.sum()),
+                "test_positives": int(y_test.sum()),
+                "random_state": RANDOM_STATE,
+            },
+        },
+        "data_quality",
+        run_dir,
+    )
+    saved["cv_folds"] = save_frame(folds, "cv_folds", run_dir)
+    saved["cv_summary"] = save_frame(summary, "cv_summary", run_dir)
+    saved["baseline_threshold_free"] = save_frame(
+        summary.drop_duplicates("model")[
+            ["model", "pr_auc_mean", "pr_auc_std", "roc_auc_mean", "roc_auc_std", "brier_mean"]
+        ],
+        "baseline_threshold_free",
+        run_dir,
+    )
+    saved["baseline_operating"] = save_frame(
+        summary[summary["flag_rate_target"] == 0.085], "baseline_operating", run_dir
+    )
+    saved["feature_comparison"] = save_frame(comparison, "feature_comparison", run_dir)
+    saved["feature_stability"] = save_frame(stability, "feature_stability", run_dir)
+    saved["open_set_results"] = save_frame(unknown_table, "open_set_results", run_dir)
+    saved["open_set_reports"] = save_json(open_set_reports, "open_set_reports", run_dir)
+    saved["baseline_logistic"] = save_model(model, "baseline_logistic", run_dir)
+
+    headline = {
+        "best_pr_auc": float(summary["pr_auc_mean"].max()),
+        "best_model_by_pr_auc": str(
+            summary.drop_duplicates("model").sort_values("pr_auc_mean", ascending=False).iloc[0]["model"]
+        ),
+        "open_set_auroc_best": float(unknown_table["auroc"].max()),
+        "rows": int(len(df)),
+        "positives": int(df[TARGET].sum()),
+    }
+    write_manifest(
+        run_dir,
+        config={
+            "target": TARGET,
+            "features": list(FEATURES),
+            "flag_rates": [0.05, 0.085, 0.10],
+            "cv": {"n_splits": 5, "n_repeats": 10},
+            "random_state": RANDOM_STATE,
+            "low_history_cut": 0.5,
+            "min_age": 18,
+        },
+        data_path=DEFAULT_DATA_PATH,
+    )
+    write_pointer(run_dir, headline)
+    write_index(
+        run_dir,
+        {
+            "headline": headline,
+            "dataset": {
+                "rows_used": len(df),
+                "positives": int(df[TARGET].sum()),
+                "positive_rate": f"{positive_rate(df[TARGET]):.2%}",
+            },
+            "pipeline": {
+                "model_saved": "baseline_logistic.joblib (fitted preprocessor + logistic regression)",
+                "load_with": "src.artifacts.load_model(run_dir, 'baseline_logistic')",
+            },
+        },
+    )
+
+    for name, location in saved.items():
+        target = location["csv"] if isinstance(location, dict) else location
+        print(f"  {name:26s} -> {target}")
+
+    # Round-trip: an artifact that cannot be loaded back is not persistence.
+    check("manifest written", (run_dir / "manifest.json").exists())
+    check("cv_folds reloads", len(load_frame(run_dir, "cv_folds")) == len(folds))
+    check("cv_summary reloads", len(load_frame(run_dir, "cv_summary")) == len(summary))
+    check(
+        "open-set report reloads",
+        len(load_json(run_dir, "open_set_reports")) == len(open_set_reports),
+    )
+    reloaded = load_model(run_dir, "baseline_logistic")
+    check(
+        "model reloads with identical predictions",
+        np.allclose(
+            reloaded.predict_proba(X_test)[:, 1], model.predict_proba(X_test)[:, 1]
+        ),
+    )
+    check("latest pointer resolves to this run", load_latest_run() == run_dir)
+    self_diff = compare_runs(run_dir, run_dir)
+    check("compare_runs works on persisted runs", (self_diff["delta"].abs() < 1e-12).all())
+    print(f"\n{len(saved)} artifacts written to {run_dir}")
 
     rule("Summary")
 

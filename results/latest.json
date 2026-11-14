@@ -1,0 +1,11 @@
+{
+  "run_id": "run_20261114_023436",
+  "path": "results/run_20261114_023436",
+  "headline": {
+    "best_pr_auc": 0.3899,
+    "best_model_by_pr_auc": "prior-history rule",
+    "open_set_auroc_best": 0.645,
+    "rows": 955,
+    "positives": 19
+  }
+}

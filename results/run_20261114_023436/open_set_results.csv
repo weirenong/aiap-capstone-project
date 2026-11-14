@@ -1,0 +1,4 @@
+holdout,n_unknown,auroc,detection_at_5fpr,known_mean,unknown_mean
+Gaming,94,0.642,0.032,0.073,0.099
+Travel,143,0.607,0.077,0.091,0.115
+Education,44,0.645,0.045,0.093,0.14

@@ -1,0 +1,42 @@
+{
+  "run_id": "run_20261114_023308",
+  "created_utc": "2026-11-14T02:33:08+00:00",
+  "git_commit": "b19ef66497a5ecfe7ab2275bd1b06feb31a8808c",
+  "versions": {
+    "python": "3.12.2",
+    "pandas": "2.2.1",
+    "numpy": "1.26.4",
+    "scikit-learn": "1.4.2",
+    "joblib": "1.6.0",
+    "imbalanced-learn": "0.12.3"
+  },
+  "config": {
+    "target": "clicked_ad",
+    "features": [
+      "user_age",
+      "previous_clicks_on_similar_ads",
+      "gender",
+      "device_type",
+      "time_of_day",
+      "ad_placement_position",
+      "ad_category"
+    ],
+    "flag_rates": [
+      0.05,
+      0.085,
+      0.1
+    ],
+    "cv": {
+      "n_splits": 5,
+      "n_repeats": 10
+    },
+    "random_state": 42,
+    "low_history_cut": 0.5,
+    "min_age": 18
+  },
+  "data": {
+    "path": "data/synthetic_data_243.csv",
+    "bytes": 55031,
+    "sha256": "a4be6e2324f172d3b46c912d33bc54bd2668ea2769ec80ff7a0cc69a9158ec50"
+  }
+}

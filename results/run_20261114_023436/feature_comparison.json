@@ -1,0 +1,50 @@
+[
+  {
+    "feature_set": "+prior history + select (MI)",
+    "n_features": 12,
+    "pr_auc_mean": 0.2705,
+    "pr_auc_std": 0.1372,
+    "recall_mean": 0.622,
+    "recall_std": 0.197
+  },
+  {
+    "feature_set": "+prior history + age bands",
+    "n_features": 29,
+    "pr_auc_mean": 0.2641,
+    "pr_auc_std": 0.1614,
+    "recall_mean": 0.582,
+    "recall_std": 0.211
+  },
+  {
+    "feature_set": "+prior history",
+    "n_features": 24,
+    "pr_auc_mean": 0.2581,
+    "pr_auc_std": 0.1481,
+    "recall_mean": 0.593,
+    "recall_std": 0.22
+  },
+  {
+    "feature_set": "+prior history + interactions",
+    "n_features": 53,
+    "pr_auc_mean": 0.2424,
+    "pr_auc_std": 0.1601,
+    "recall_mean": 0.552,
+    "recall_std": 0.231
+  },
+  {
+    "feature_set": "+prior history + select (l1)",
+    "n_features": 12,
+    "pr_auc_mean": 0.2408,
+    "pr_auc_std": 0.1329,
+    "recall_mean": 0.597,
+    "recall_std": 0.214
+  },
+  {
+    "feature_set": "raw (no derived)",
+    "n_features": 22,
+    "pr_auc_mean": 0.2299,
+    "pr_auc_std": 0.1499,
+    "recall_mean": 0.49,
+    "recall_std": 0.249
+  }
+]

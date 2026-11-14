@@ -1,5 +1,71 @@
 # aiap-capstone-project
 
+Predicting whether a user clicks an ad, framed as a **"None" classification problem**: the model has to be able to say *"none of my known classes"* instead of always picking one. The target is `clicked_ad` — 19 positives in 955 rows after cleaning, a 2% positive rate — so accuracy is meaningless and every reported number is PR-AUC, recall at a fixed flag rate, or an explicit open-set test.
+
+## Repository map
+
+| Path | What it does |
+|---|---|
+| `data/synthetic_data_243.csv` | raw input, 1,000 rows, 8 columns |
+| `eda.ipynb` | Sprint 2 exploratory analysis, executed with outputs and plots |
+| `src/preprocessing.py` | schema, row filtering, impute → engineer → clip → scale, fitted per fold |
+| `src/feature_engineering.py` | derived features, in-fold feature selection, selection-stability diagnostics |
+| `src/models.py` | baselines, imbalanced-classification metrics, CV comparison, open-set report |
+| `src/artifacts.py` | persistence: run directories, manifests, CSV/JSON/joblib round-trip |
+| `main.py` | end-to-end validation harness; writes a complete results run |
+| `results/` | one directory per run plus `latest.json` pointer |
+| `README.md` | this document, with the sprint write-ups below |
+
+## How to run
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+python main.py          # validates the pipeline end to end and writes results/run_<timestamp>/
+```
+
+`main.py` is a harness, not a demo: every section ends in a `check()` that raises on failure, so a broken assumption exits non-zero instead of printing a plausible-looking table.
+
+## Results and artifacts
+
+Every run writes a self-contained directory, so results survive the process that produced them and later experiments can be compared by reading files instead of re-running:
+
+```
+results/
+  latest.json                     # newest run id + headline metrics
+  run_20261114_022825/
+    manifest.json                 # git commit, package versions, data sha256, seeds, config
+    index.md                      # human-readable summary of the run
+    data_quality.json             # filter report, split sizes, positive rates
+    cv_folds.csv / .json          # every fold x model x operating point
+    cv_summary.csv / .json        # mean/std across the 50 fits
+    baseline_threshold_free.csv   # PR-AUC / ROC-AUC / Brier per model
+    baseline_operating.csv        # recall / precision / F1 at the chosen flag rate
+    feature_comparison.csv        # feature sets, ranked
+    feature_stability.csv         # how often each feature survived selection
+    open_set_results.csv          # per held-out category
+    open_set_reports.json         # full report objects, one per holdout
+    baseline_logistic.joblib      # fitted preprocessor + classifier
+```
+
+CSV for tabular results, JSON for structured or nested ones, joblib for the fitted pipeline. Both formats are written for every table because a human reads the CSV and a later script reads the JSON.
+
+Loading is a two-line operation:
+
+```python
+from src.artifacts import load_latest_run, load_frame, load_model, compare_runs
+
+run = load_latest_run()
+summary = load_frame(run, "cv_summary")
+model = load_model(run, "baseline_logistic")
+diff = compare_runs(run, other_run, metric="pr_auc_mean")   # matched on model + flag rate
+```
+
+Persistence is verified rather than assumed. `main.py` section 11 reloads every artifact it just wrote and checks it: row counts survive the round trip, the reloaded model returns identical probabilities to the original, `latest.json` resolves to the run that was just created, and `compare_runs(run, run)` returns all-zero deltas. An artifact that cannot be loaded back is not persistence, and this is where that gets caught.
+
+---
+
 ## Sprint 1: Literature Review — "None" classification
 
 ### What the problem actually is
@@ -397,3 +463,87 @@ The lesson is the same one from Sprints 3.1 and 3.2 — a metric can look like a
 - **Realistic target:** a model that beats 0.39 PR-AUC outside its standard deviation, on features that aren't just prior clicks, without resampling leakage.
 - **Also required:** an open-set score with AUROC meaningfully above 0.65 and a detection rate that isn't inside a 5% false-positive budget. Nothing in this sprint does that.
 - **Report the std.** At 19 positives a bare mean is a claim about a coin.
+
+---
+
+## Sprint 4, Issue 2: Persisting Results and Artifacts
+
+The pipeline previously produced clean tables and report objects, then printed them and let them die with the process. That's fixed: `src/artifacts.py` adds a run-directory layer, and `main.py` section 11 now writes ten artifacts per run and verifies every one of them loads back.
+
+### What gets written
+
+| Artifact | Contents |
+|---|---|
+| `manifest.json` | Run id, UTC timestamp, git commit, Python and package versions, data file sha256 and size, full config (target, features, flag rates, CV settings, seed, cut points) |
+| `data_quality.json` | Filter report (45 under-18 rows removed, 1 positive lost), split sizes, positive rates |
+| `cv_folds.csv/.json` | All 500 rows: every fold × model × flag rate, with thresholds and confusion counts |
+| `cv_summary.csv/.json` | Mean and std per model and flag rate, including Brier |
+| `baseline_threshold_free.csv` | PR-AUC, ROC-AUC, Brier per model |
+| `baseline_operating.csv` | Recall, precision, F1, achieved flag rate at 8.5% |
+| `feature_comparison.csv` | The six feature sets from Sprint 3.2, ranked |
+| `feature_stability.csv` | Per-feature survival across 50 fits |
+| `open_set_results.csv` | Per held-out category: AUROC, detection at 5% FPR, mean none scores |
+| `open_set_reports.json` | Full `OpenSetReport` objects, one per holdout |
+| `baseline_logistic.joblib` | Fitted preprocessor + logistic regression, loadable directly |
+| `index.md` + `results/latest.json` | Human summary and the pointer to the newest run |
+
+Aggregated and fold-level results are both kept, because the mean alone hides the variance that dominates this dataset. Two formats for each table: CSV for reading, JSON for scripts.
+
+### Why this matters beyond tidiness
+
+- **Comparisons become reads.** `compare_runs(old, new, metric="pr_auc_mean")` joins two persisted `cv_summary` tables on model and flag rate and returns the deltas. Previously this required re-running both experiments.
+- **Provenance is explicit.** The manifest records the data file's sha256, so a result can be tied to exact input bytes rather than a filename. If the CSV changes, the hash no longer matches.
+- **The baseline is reusable.** `load_model(run, "baseline_logistic")` returns the fitted pipeline — preprocessor included, so it can be applied to new rows without rebuilding anything.
+- **Runs don't overwrite each other.** Directories are timestamped, with a collision suffix for two runs in the same second, and `latest.json` points at the most recent.
+
+### Verification
+
+Section 11 fails the run if any of these break:
+
+| Check | Result |
+|---|---|
+| Manifest written | pass |
+| `cv_folds` row count survives the round trip | pass (500 rows) |
+| `cv_summary` row count survives | pass (12 rows) |
+| Open-set reports reload | pass (3 reports) |
+| Reloaded model predicts identically | pass, `np.allclose` to the original |
+| `latest.json` resolves to this run | pass |
+| `compare_runs(run, run)` returns zero deltas | pass |
+
+None of this is mocked: the checks read the files back off disk through the same public loaders a later script would use.
+
+### Reproducing a run
+
+```bash
+pip install -r requirements.txt
+python main.py
+cat results/latest.json
+```
+
+The manifest's `git_commit`, `random_state`, and `data.sha256` are what make a run reproducible. `requirements.txt` pins exact versions; `joblib==1.6.0` was added for the model artifact.
+
+### What persisting the numbers surfaced
+
+Aggregating Brier alongside PR-AUC made a calibration problem visible that the previous run had thrown away:
+
+| Model | PR-AUC | Brier |
+|---|---|---|
+| always none (floor) | 0.020 | **0.0199** |
+| hist gradient boosting | 0.198 | 0.0222 |
+| random forest | 0.265 | 0.0317 |
+| logistic regression | 0.258 | 0.0951 |
+| prior-history rule | 0.390 | 0.0918 |
+| logistic (prior-clicks only) | 0.325 | 0.1109 |
+
+The floor has the best Brier score of any model. That isn't a paradox — it emits `[1, 0]` probabilities and is right 98% of the time, which is exactly what Brier rewards when the base rate is 2%. What it exposes is that `class_weight="balanced"` reweights the training distribution, so the model's probabilities no longer estimate the real 2% rate: the balanced logistic regression ranks better than the floor (PR-AUC 0.258 vs 0.020) but is five times worse as a probability estimate. Hist gradient boosting, which has no class weighting, keeps a Brier of 0.022 — close to the floor — while still ranking well.
+
+The practical consequence: if these probabilities are ever going to be used as probabilities (expected-value decisions, ranking by expected revenue, a dashboard), the reweighted models need calibration — isotonic or Platt on a validation split — or the class weights should be dropped and the threshold tuned instead. That was invisible while results were printed and discarded; persisting Brier made it a one-line comparison.
+
+The rule model's Brier (0.092) is the one number in that table that shouldn't be read at all: its `predict_proba` is an arbitrary squashing of a distance, not a calibrated probability, and it's included only so the interface is uniform.
+
+### What changed in the repo
+
+- `src/artifacts.py` — new, the persistence layer.
+- `main.py` — section 11, plus the Brier column flowing into the summary.
+- `requirements.txt` — `joblib` added, pins grouped by purpose.
+- `results/` — now populated by each run; `results/latest.json` points at the newest one.

@@ -1,0 +1,26 @@
+[
+  {
+    "holdout": "Gaming",
+    "n_unknown": 94,
+    "auroc": 0.642,
+    "detection_at_5fpr": 0.032,
+    "known_mean": 0.073,
+    "unknown_mean": 0.099
+  },
+  {
+    "holdout": "Travel",
+    "n_unknown": 143,
+    "auroc": 0.607,
+    "detection_at_5fpr": 0.077,
+    "known_mean": 0.091,
+    "unknown_mean": 0.115
+  },
+  {
+    "holdout": "Education",
+    "n_unknown": 44,
+    "auroc": 0.645,
+    "detection_at_5fpr": 0.045,
+    "known_mean": 0.093,
+    "unknown_mean": 0.14
+  }
+]
