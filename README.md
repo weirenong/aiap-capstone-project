@@ -312,3 +312,88 @@ Both are the same class of problem as the clipping bug in Issue 1: a transform t
 - **Stop treating model differences under ~0.10 PR-AUC as real.** That is one standard deviation here.
 - **The single-rule baseline still wins.** Any sprint-4 model has to beat recall 0.80 at an 8.5% flag rate, and nothing so far has.
 - **The open-set score is still missing.** Feature engineering didn't touch it, and the Sprint 3 smoke test showed held-out categories scoring *higher* than known ones. That is the next real problem, not more tabular features.
+
+---
+
+## Sprint 4, Issue 1: Baselines and Benchmark
+
+Code: `src/models.py`. Run `python main.py` (section 10). Uses the Sprint 3 pipeline and feature set unchanged, so the numbers are comparable with everything before this.
+
+### What's in the module
+
+**Baselines** — chosen to bracket the problem rather than to look impressive:
+
+| Model | What it establishes |
+|---|---|
+| `AlwaysNoneClassifier` | The floor. 98% accurate, zero recall. Included because the accuracy trap is the whole reason the metrics look the way they do. |
+| `PriorHistoryRuleClassifier` | The EDA rule (`previous_clicks ≤ 0.5`). This is the bar, not the floor — it already beat every learned model in Sprint 3. |
+| Logistic regression | Linear baseline through the full pipeline, balanced class weights. |
+| Logistic, prior-clicks block only | Diagnostic: what happens when the cohort features are removed. |
+| Random forest | Non-linear baseline, `balanced_subsample`, shallow leaves. |
+| Hist gradient boosting | Strong tabular baseline without class weighting (it has no `class_weight`). |
+
+**Metrics** — threshold-free (`PR-AUC`, `ROC-AUC`, `Brier`) plus operating points (`precision`, `recall`, `F1`, achieved flag rate) at 5%, 8.5% and 10% flag rates, with the threshold always taken from the training fold. Accuracy is deliberately absent from the code path, not just from the write-up.
+
+**Open-set evaluation** — `none_score` (1 − max predicted probability) plus `open_set_report`, which fits on five ad categories and scores a held-out sixth. This is the measurement Sprint 3 flagged as missing.
+
+### Results
+
+Repeated stratified 5-fold ×10, all 19 positives. Threshold-free first:
+
+| Model | PR-AUC | ROC-AUC |
+|---|---|---|
+| prior-history rule | **0.390 ± 0.166** | **0.913 ± 0.049** |
+| logistic (prior-clicks only) | 0.325 ± 0.158 | 0.904 ± 0.054 |
+| random forest | 0.265 ± 0.162 | 0.874 ± 0.084 |
+| logistic regression | 0.258 ± 0.150 | 0.822 ± 0.099 |
+| hist gradient boosting | 0.198 ± 0.124 | 0.854 ± 0.094 |
+| always none (floor) | 0.020 ± 0.002 | 0.500 ± 0.000 |
+
+At an 8.5% flag rate, threshold from the training fold:
+
+| Model | Recall | Precision | F1 | Achieved flag rate |
+|---|---|---|---|---|
+| random forest | **0.708 ± 0.211** | 0.170 | 0.272 | 8.6% |
+| prior-history rule | 0.702 ± 0.245 | 0.172 | 0.273 | 8.3% |
+| logistic (prior-clicks only) | 0.645 ± 0.214 | 0.160 | 0.253 | 8.3% |
+| logistic regression | 0.578 ± 0.219 | 0.141 | 0.225 | 8.3% |
+| hist gradient boosting | 0.572 ± 0.221 | 0.123 | 0.201 | 9.5% |
+| always none (floor) | 0.000 ± 0.000 | 0.000 | 0.000 | 0.0% |
+
+### What the benchmark actually says
+
+1. **The floor is 98% accurate and useless.** Zero recall at any threshold, because a constant score cannot rank. That is the concrete version of the accuracy argument from the EDA.
+2. **A hand-written rule is still the best model on this data.** PR-AUC 0.390 and ROC-AUC 0.913, ahead of every learned model. The random forest matches it at one operating point (0.708 vs 0.702 recall) but needs 400 trees and 24 features to tie a one-line threshold, and ranks worse.
+3. **The cohort features cost accuracy rather than adding it.** Logistic regression with the prior-clicks block alone scores 0.325 PR-AUC and 0.645 recall; adding device, time, placement, category and gender drops it to 0.258 and 0.578. At 19 positives those columns are variance, not signal — the same conclusion Sprint 3 reached, now visible in model performance instead of feature selection.
+4. **Differences inside the standard deviations are not results.** Recall means span 0.57 to 0.71 with std around 0.21. Only the rule-vs-floor and rule-vs-full-logistic gaps are large enough to defend.
+5. **Nothing here is production-ready.** The best operating point finds ~70% of clicks while flagging 8.5% of all impressions, at a precision of 0.17 — for a 2% base rate, that's a lift of about 8×, which is a reasonable start and a long way from a decision system.
+
+### The open-set result
+
+Held-out category as the unknown class, none score = 1 − max probability:
+
+| Held out | n unknown | AUROC | Detection at 5% FPR |
+|---|---|---|---|
+| Gaming | 94 | 0.642 | 3.2% |
+| Travel | 143 | 0.607 | 7.7% |
+| Education | 44 | 0.645 | 4.5% |
+
+0.5 is chance. 0.61–0.65 is barely above it, and at a 5% false-positive budget the score catches 3–8% of unknowns — in practice, nothing. Mean none scores are higher for unknown rows than known ones (0.10–0.14 vs 0.07–0.09), so there is a trace of signal, but nowhere near usable. This is the measured form of the gap Sprint 1 opened: a closed-set classifier has no mechanism for saying "none of mine", and dressing it with 1 − max softmax is not one.
+
+The three holdouts are also the honest caveat — semantic shift dominates open-set difficulty, so a single holdout would have been meaningless either way.
+
+### Two bugs found in the metrics code
+
+Both changed conclusions, which is why they're recorded rather than quietly fixed:
+
+1. **The threshold search ran descending**, so it returned the maximum score and flagged almost nothing — the always-none floor appeared to have recall 1.0, and every model showed ≈0 recall at an 8.5% budget. Fixed by walking distinct scores ascending and taking the first that fits the budget.
+2. **Ties at a constant score.** A quantile threshold on an all-equal score flags every row, which handed the floor recall 1.0 again. Fixed by treating the budget as a hard cap: if no threshold fits, nothing is flagged.
+
+The lesson is the same one from Sprints 3.1 and 3.2 — a metric can look like a result while the machinery underneath is degenerate. The floor model exists partly to catch this: if "predict none always" ever shows non-zero recall, the evaluation is broken.
+
+### Established benchmark for Sprint 5
+
+- **To beat:** prior-history rule — PR-AUC 0.390, ROC-AUC 0.913, recall 0.702 at an 8.5% flag rate.
+- **Realistic target:** a model that beats 0.39 PR-AUC outside its standard deviation, on features that aren't just prior clicks, without resampling leakage.
+- **Also required:** an open-set score with AUROC meaningfully above 0.65 and a detection rate that isn't inside a 5% false-positive budget. Nothing in this sprint does that.
+- **Report the std.** At 19 positives a bare mean is a claim about a coin.

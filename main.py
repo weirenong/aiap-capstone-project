@@ -18,6 +18,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
@@ -228,8 +229,6 @@ def main() -> None:
 
     rule("9. Feature engineering: what actually earns its place")
 
-    from sklearn.compose import ColumnTransformer as _CT
-
     from src.feature_engineering import (
         AgeBandFeatures,
         FeatureSelector,
@@ -251,7 +250,7 @@ def main() -> None:
         return Pipeline(steps)
 
     def extend(pre, blocks):
-        return _CT(
+        return ColumnTransformer(
             transformers=list(pre.transformers) + blocks,
             remainder="drop",
             verbose_feature_names_out=True,
@@ -314,6 +313,111 @@ def main() -> None:
     print(stability.head(12).to_string(index=False))
     print(f"\nselected in >=80% of the 50 fits: {len(stable)} of {len(stability)} features")
     print(f"median feature is kept in {stability['folds_selected'].median():.0f} of 50 fits")
+
+    rule("10. Baselines and the open-set question")
+
+    from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
+
+    from src.models import (
+        AlwaysNoneClassifier,
+        PriorHistoryRuleClassifier,
+        cross_validate_models,
+        evaluate_at_flag_rates,
+        open_set_auc_by_category,
+        open_set_report,
+        scores_from_model,
+    )
+
+    # Diagnostic: everything before this point says the extra columns only add variance.
+    # This model sees the prior-clicks block and nothing else, so the gap to the full
+    # model is the cost of the cohort features.
+    numeric_only = ColumnTransformer(
+        [build_preprocessor().transformers[0]], remainder="drop", verbose_feature_names_out=True
+    )
+
+    baseline_factories = {
+        "always none (floor)": lambda: AlwaysNoneClassifier(),
+        "logistic (prior-clicks only)": lambda: Pipeline(
+            [
+                ("preprocess", numeric_only),
+                (
+                    "model",
+                    LogisticRegression(
+                        max_iter=1000, class_weight="balanced", random_state=RANDOM_STATE
+                    ),
+                ),
+            ]
+        ),
+        "prior-history rule": lambda: PriorHistoryRuleClassifier(cut=0.5),
+        "logistic regression": lambda: build_model(
+            LogisticRegression(max_iter=1000, class_weight="balanced", random_state=RANDOM_STATE)
+        ),
+        "random forest": lambda: build_model(
+            RandomForestClassifier(
+                n_estimators=400, min_samples_leaf=5, class_weight="balanced_subsample",
+                random_state=RANDOM_STATE, n_jobs=-1,
+            )
+        ),
+        "hist gradient boosting": lambda: build_model(
+            HistGradientBoostingClassifier(
+                max_iter=200, learning_rate=0.05, max_leaf_nodes=15,
+                random_state=RANDOM_STATE,
+            )
+        ),
+    }
+
+    folds, summary = cross_validate_models(
+        X_all, y_all, baseline_factories, flag_rates=(0.05, 0.085), n_repeats=10
+    )
+    threshold_free = summary.drop_duplicates("model")[
+        ["model", "pr_auc_mean", "pr_auc_std", "roc_auc_mean", "roc_auc_std"]
+    ].sort_values("pr_auc_mean", ascending=False)
+    print("threshold-free:")
+    print(threshold_free.to_string(index=False))
+
+    operating = summary[summary["flag_rate_target"] == 0.085][
+        ["model", "recall_mean", "recall_std", "precision_mean", "f1_mean",
+         "achieved_flag_rate"]
+    ].sort_values("recall_mean", ascending=False)
+    print("\nat an 8.5% flag rate, threshold chosen on the training fold:")
+    print(operating.to_string(index=False))
+    print("\n(repeated stratified 5-fold x10, 19 positives; std is the honest column)")
+
+    # One worked operating point, held out, for the story rather than the ranking.
+    rule_model = PriorHistoryRuleClassifier(cut=0.5).fit(X_train, y_train)
+    rule_scores = scores_from_model(rule_model, X_test)
+    print("\nprior-history rule on the 191-row test split:")
+    print(
+        evaluate_at_flag_rates(
+            y_test, rule_scores, flag_rates=(0.085,), threshold_scores=rule_scores
+        )[["flag_rate_target", "tp", "fp", "fn", "precision", "recall", "roc_auc"]].to_string(index=False)
+    )
+
+    print("\nOpen-set behaviour, held-out ad_category as the unknown class")
+    print("(none score = 1 - max predicted probability; higher = more none-like)")
+
+    known_frames, unknown_results = {}, []
+    for holdout in ["Gaming", "Travel", "Education"]:
+        X_tr, X_te, y_tr, y_te, unknown_df = make_open_set_split(df, holdout)
+        report, _ = open_set_report(
+            X_tr, y_tr, X_te, unknown_df[list(FEATURES)], lambda: build_model(
+                LogisticRegression(max_iter=1000, class_weight="balanced", random_state=RANDOM_STATE)
+            )
+        )
+        unknown_results.append(
+            {
+                "holdout": holdout,
+                "n_unknown": report.n_unknown,
+                "auroc": round(report.auroc, 3),
+                "detection_at_5fpr": round(report.detection_rate_at_5fpr, 3),
+                "known_mean": round(report.known_mean_none_score, 3),
+                "unknown_mean": round(report.unknown_mean_none_score, 3),
+            }
+        )
+    print(pd.DataFrame(unknown_results).to_string(index=False))
+    print("\n0.5 AUROC is chance. These are 0.61-0.65 — barely above it, and at a 5% "
+          "false-positive budget the score catches 3-8% of unknowns, so in practice it "
+          "detects nothing. That is the gap Sprint 1 named, measured on three holdouts.")
 
     rule("Summary")
 
