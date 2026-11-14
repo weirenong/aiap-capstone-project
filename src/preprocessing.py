@@ -153,6 +153,7 @@ class IQRClipper(TransformerMixin, BaseEstimator):
         self.factor = factor
 
     def fit(self, X, y=None):
+        """Fit on training data only; every learned statistic belongs to the fold it saw."""
         matrix, names = _as_matrix(X)
         q1 = np.nanpercentile(matrix, 25, axis=0)
         q3 = np.nanpercentile(matrix, 75, axis=0)
@@ -172,6 +173,7 @@ class IQRClipper(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X):
+        """Apply the fitted transform and return the produced columns."""
         matrix, _ = _as_matrix(X)
         if matrix.shape[1] != self.n_features_in_:
             raise ValueError(
@@ -180,6 +182,7 @@ class IQRClipper(TransformerMixin, BaseEstimator):
         return np.clip(matrix, self.lower_, self.upper_)
 
     def get_feature_names_out(self, input_features=None):
+        """Names of the columns this transformer produces."""
         if self.feature_names_in_ is not None:
             return self.feature_names_in_
         if input_features is None:

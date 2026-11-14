@@ -1,0 +1,18 @@
+{
+  "model_artifact": "baseline_logistic",
+  "model_type": "logistic regression, class_weight=balanced, through the full pipeline",
+  "threshold": 0.7575232106378879,
+  "flag_rate": 0.085,
+  "threshold_source": "quantile of training-split scores at the target flag rate",
+  "features": [
+    "user_age",
+    "previous_clicks_on_similar_ads",
+    "gender",
+    "device_type",
+    "time_of_day",
+    "ad_placement_position",
+    "ad_category"
+  ],
+  "target": "clicked_ad",
+  "caveat": "This model does not beat the prior-history rule on PR-AUC (0.258 vs 0.390). It is persisted because it is the deployable pipeline, not because it is the best model."
+}

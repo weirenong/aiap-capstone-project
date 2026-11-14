@@ -608,6 +608,29 @@ def main() -> None:
     saved["learning_curve_rf"] = save_frame(tree_scoreboard, "learning_curve_rf", run_dir)
     saved["final_selection"] = save_json(selection, "final_selection", run_dir)
     saved["baseline_logistic"] = save_model(model, "baseline_logistic", run_dir)
+    # Scoring configuration: predict.py reads the threshold from here rather than guessing
+    # 0.5, which at a 2% base rate would flag almost nothing.
+    scoring_threshold = float(
+        np.quantile(model.predict_proba(X_train)[:, 1], 1 - TARGET_FLAG_RATE)
+    )
+    saved["scoring"] = save_json(
+        {
+            "model_artifact": "baseline_logistic",
+            "model_type": "logistic regression, class_weight=balanced, through the full pipeline",
+            "threshold": scoring_threshold,
+            "flag_rate": TARGET_FLAG_RATE,
+            "threshold_source": "quantile of training-split scores at the target flag rate",
+            "features": list(FEATURES),
+            "target": TARGET,
+            "caveat": (
+                "This model does not beat the prior-history rule on PR-AUC (0.258 vs 0.390). "
+                "It is persisted because it is the deployable pipeline, not because it is "
+                "the best model."
+            ),
+        },
+        "scoring",
+        run_dir,
+    )
 
     headline = {
         "best_pr_auc": float(summary["pr_auc_mean"].max()),

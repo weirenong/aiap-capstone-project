@@ -59,6 +59,7 @@ class PriorHistoryFeatures(TransformerMixin, BaseEstimator):
         self.add_log = add_log
 
     def fit(self, X, y=None):
+        """Fit on training data only; every learned statistic belongs to the fold it saw."""
         self.feature_names_in_ = np.asarray(
             list(X.columns)
             if isinstance(X, pd.DataFrame)
@@ -68,6 +69,7 @@ class PriorHistoryFeatures(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X):
+        """Apply the fitted transform and return the produced columns."""
         if isinstance(X, pd.DataFrame):
             frame = X.copy()
         else:
@@ -84,6 +86,7 @@ class PriorHistoryFeatures(TransformerMixin, BaseEstimator):
         return frame
 
     def get_feature_names_out(self, input_features=None):
+        """Names of the columns this transformer produces."""
         base = (
             list(input_features)
             if input_features is not None
@@ -116,12 +119,14 @@ class AgeBandFeatures(TransformerMixin, BaseEstimator):
         self.labels = labels
 
     def fit(self, X, y=None):
+        """Fit on training data only; every learned statistic belongs to the fold it saw."""
         if self.column not in getattr(X, "columns", []):
             raise ValueError(f"column {self.column!r} not present")
         self.categories_ = list(self.labels)
         return self
 
     def transform(self, X):
+        """Apply the fitted transform and return the produced columns."""
         binned = pd.cut(
             X[self.column], bins=list(self.bins), labels=list(self.labels), include_lowest=True
         )
@@ -130,6 +135,7 @@ class AgeBandFeatures(TransformerMixin, BaseEstimator):
         return dummies.reindex(columns=expected, fill_value=0.0).to_numpy()
 
     def get_feature_names_out(self, input_features=None):
+        """Names of the columns this transformer produces."""
         return np.asarray([f"{self.column}_{l}" for l in self.categories_], dtype=object)
 
 
@@ -156,6 +162,7 @@ class PairwiseInteractionFeatures(TransformerMixin, BaseEstimator):
         )
 
     def fit(self, X, y=None):
+        """Fit on training data only; every learned statistic belongs to the fold it saw."""
         for col in (self.left, self.right):
             if col not in getattr(X, "columns", []):
                 raise ValueError(f"column {col!r} not present")
@@ -164,6 +171,7 @@ class PairwiseInteractionFeatures(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X):
+        """Apply the fitted transform and return the produced columns."""
         combined = pd.Categorical(self._combine(X), categories=self.levels_)
         dummies = pd.get_dummies(combined, dtype=float)
         # get_dummies already carries the level as the column label, so rename before
@@ -176,6 +184,7 @@ class PairwiseInteractionFeatures(TransformerMixin, BaseEstimator):
         return dummies.reindex(columns=expected, fill_value=0.0).to_numpy()
 
     def get_feature_names_out(self, input_features=None):
+        """Names of the columns this transformer produces."""
         return np.asarray(
             [f"{self.left}__x__{self.right}={level}" for level in self.levels_], dtype=object
         )
@@ -207,6 +216,7 @@ class FeatureSelector(TransformerMixin, BaseEstimator):
     def _make_selector(self):
         if self.strategy == "mutual_info":
             def score(X, y):
+                """Higher means more none-like."""
                 return mutual_info_classif(X, y, random_state=self.random_state)
 
             return SelectKBest(score_func=score, k=min(self.k, np.inf))
@@ -222,6 +232,7 @@ class FeatureSelector(TransformerMixin, BaseEstimator):
         raise ValueError(f"unknown strategy: {self.strategy!r}")
 
     def fit(self, X, y):
+        """Fit on training data only; every learned statistic belongs to the fold it saw."""
         self.selector_ = self._make_selector()
         self.selector_.fit(X, y)
         matrix = np.asarray(X)
@@ -233,9 +244,11 @@ class FeatureSelector(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X):
+        """Apply the fitted transform and return the produced columns."""
         return self.selector_.transform(X)
 
     def get_feature_names_out(self, input_features=None):
+        """Names of the columns this transformer produces."""
         names = (
             np.asarray(input_features, dtype=object)
             if input_features is not None

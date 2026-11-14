@@ -94,6 +94,7 @@ def model_factories(include_selector: bool = False) -> dict[str, callable]:
     """
 
     def logistic(**params):
+        """Logistic regression pipeline, parameterised so the search grid can pass C."""
         return Pipeline(
             [
                 ("preprocess", build_preprocessor()),

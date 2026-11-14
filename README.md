@@ -11,9 +11,13 @@ Predicting whether a user clicks an ad, framed as a **"None" classification prob
 | `src/preprocessing.py` | schema, row filtering, impute → engineer → clip → scale, fitted per fold |
 | `src/feature_engineering.py` | derived features, in-fold feature selection, selection-stability diagnostics |
 | `src/models.py` | baselines, imbalanced-classification metrics, CV comparison, open-set report |
+| `src/advanced_models.py` | SVM/MLP/k-NN pipelines and five none detectors |
+| `src/model_optimization.py` | nested CV, tuning stability, learning curves, final selection |
 | `src/artifacts.py` | persistence: run directories, manifests, CSV/JSON/joblib round-trip |
+| `src/predict.py` | batch scoring CLI (`python -m src.predict`) |
 | `main.py` | end-to-end validation harness; writes a complete results run |
 | `results/` | one directory per run plus `latest.json` pointer |
+| `documentation/` | project report, API reference, model card, deployment guide, reproducibility |
 | `README.md` | this document, with the sprint write-ups below |
 
 ## How to run
@@ -26,6 +30,24 @@ python main.py          # validates the pipeline end to end and writes results/r
 ```
 
 `main.py` is a harness, not a demo: every section ends in a `check()` that raises on failure, so a broken assumption exits non-zero instead of printing a plausible-looking table.
+
+Batch scoring with a persisted run:
+
+```bash
+python -m src.predict --input rows.csv --output scored.csv
+```
+
+## Documentation
+
+Full documentation lives in [`documentation/`](documentation/):
+
+| Document | Contents |
+|---|---|
+| [Project report](documentation/01_project_report.md) | Problem framing, data audit, features, models, results, error analysis, limitations |
+| [API reference](documentation/02_api_reference.md) | Every module and public symbol with signatures and gotchas |
+| [Model card](documentation/03_model_card.md) | Intended use, metrics, calibration, ethics, out-of-scope uses |
+| [Deployment guide](documentation/04_deployment_guide.md) | Install, batch scoring, contracts, thresholds, monitoring, retraining |
+| [Reproducibility](documentation/05_reproducibility.md) | Environment, seeds, determinism evidence, failure modes |
 
 ## Results and artifacts
 

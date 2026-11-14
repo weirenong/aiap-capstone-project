@@ -141,14 +141,17 @@ def save_model(model, name: str, run_dir: Path) -> str:
 
 
 def load_frame(run_dir: Path, name: str) -> pd.DataFrame:
+    """Read <name>.csv from a run directory as a DataFrame."""
     return pd.read_csv(Path(run_dir) / f"{name}.csv")
 
 
 def load_json(run_dir: Path, name: str):
+    """Read <name>.json from a run directory."""
     return json.loads((Path(run_dir) / f"{name}.json").read_text())
 
 
 def load_model(run_dir: Path, name: str):
+    """Load a fitted estimator or pipeline from a run directory."""
     return joblib.load(Path(run_dir) / f"{name}.joblib")
 
 

@@ -64,6 +64,7 @@ class NoneDetector(BaseEstimator):
         self.k = k
 
     def fit(self, X, y=None):
+        """Fit on training data only; every learned statistic belongs to the fold it saw."""
         matrix = np.asarray(X, dtype=float)
         self.n_features_in_ = matrix.shape[1]
 

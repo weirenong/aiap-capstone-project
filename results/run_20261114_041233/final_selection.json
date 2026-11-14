@@ -1,6 +1,0 @@
-{
-  "selected": "prior-history rule",
-  "reason": "best tuned model (logistic regression) edges the reference by -0.076 PR-AUC, inside the 0.02 tolerance or its std (0.125); the reference has no fitted parameters, so it wins the tie",
-  "margin_over_reference": -0.0759,
-  "decisive": false
-}

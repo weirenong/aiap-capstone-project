@@ -53,14 +53,17 @@ class AlwaysNoneClassifier(ClassifierMixin, BaseEstimator):
     """
 
     def fit(self, X, y=None):
+        """Fit on training data only; every learned statistic belongs to the fold it saw."""
         self.classes_ = np.array([NONE_LABEL, POSITIVE_LABEL])
         self.n_features_in_ = np.asarray(X).shape[1]
         return self
 
     def predict(self, X):
+        """Return hard 0/1 predictions."""
         return np.zeros(np.asarray(X).shape[0], dtype=int)
 
     def predict_proba(self, X):
+        """Return class probabilities, positive class in the second column."""
         n = np.asarray(X).shape[0]
         return np.column_stack([np.ones(n), np.zeros(n)])
 
@@ -79,6 +82,7 @@ class PriorHistoryRuleClassifier(ClassifierMixin, BaseEstimator):
         self.cut = cut
 
     def fit(self, X, y=None):
+        """Fit on training data only; every learned statistic belongs to the fold it saw."""
         if self.column not in getattr(X, "columns", []):
             raise ValueError(f"column {self.column!r} not present")
         self.classes_ = np.array([NONE_LABEL, POSITIVE_LABEL])
@@ -86,14 +90,17 @@ class PriorHistoryRuleClassifier(ClassifierMixin, BaseEstimator):
         return self
 
     def decision_function(self, X):
+        """Higher means more likely to be the positive class."""
         return (self.cut - X[self.column]).to_numpy(dtype=float)
 
     def predict(self, X):
+        """Return hard 0/1 predictions."""
         return (X[self.column] <= self.cut).to_numpy(dtype=int)
 
     def predict_proba(self, X):
         # Monotone squashing of the decision, for callers that require probabilities.
         # Not calibrated, and not used for any reported metric.
+        """Return class probabilities, positive class in the second column."""
         margin = self.decision_function(X)
         p = 1.0 / (1.0 + np.exp(-margin))
         return np.column_stack([1 - p, p])
@@ -324,6 +331,7 @@ class OpenSetReport:
     threshold_at_5fpr: float
 
     def as_dict(self) -> dict:
+        """Plain-dict copy, for JSON serialisation."""
         return self.__dict__.copy()
 
 
