@@ -1,0 +1,20 @@
+model,parameter,value,selected,folds,share
+knn,model__n_neighbors,35,6,10,0.6
+knn,model__n_neighbors,15,4,10,0.4
+knn,model__weights,distance,7,10,0.7
+knn,model__weights,uniform,3,10,0.3
+logistic regression,model__C,0.01,8,10,0.8
+logistic regression,model__C,1.0,1,10,0.1
+logistic regression,model__C,0.1,1,10,0.1
+logistic regression,model__penalty,l2,10,10,1.0
+mlp,model__alpha,0.0001,9,10,0.9
+mlp,model__alpha,0.01,1,10,0.1
+mlp,model__hidden_layer_sizes,"(32, 16)",10,10,1.0
+random forest,model__max_depth,None,5,10,0.5
+random forest,model__max_depth,3,5,10,0.5
+random forest,model__min_samples_leaf,5,8,10,0.8
+random forest,model__min_samples_leaf,1,2,10,0.2
+rbf svm,model__C,0.1,8,10,0.8
+rbf svm,model__C,1.0,2,10,0.2
+rbf svm,model__gamma,0.01,9,10,0.9
+rbf svm,model__gamma,scale,1,10,0.1

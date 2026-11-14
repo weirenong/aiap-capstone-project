@@ -1,0 +1,67 @@
+[
+  {
+    "model": "logistic regression",
+    "tuned_pr_auc": 0.3101,
+    "tuned_std": 0.1248,
+    "default_pr_auc": 0.2431,
+    "gain": 0.067,
+    "gain_std": 0.1034,
+    "folds_better": 6,
+    "folds": 10,
+    "inner_best": 0.3101,
+    "outer_minus_inner": -0.0,
+    "reference_pr_auc": 0.386
+  },
+  {
+    "model": "rbf svm",
+    "tuned_pr_auc": 0.298,
+    "tuned_std": 0.1749,
+    "default_pr_auc": 0.1167,
+    "gain": 0.1813,
+    "gain_std": 0.1531,
+    "folds_better": 10,
+    "folds": 10,
+    "inner_best": 0.3112,
+    "outer_minus_inner": -0.0132,
+    "reference_pr_auc": 0.386
+  },
+  {
+    "model": "random forest",
+    "tuned_pr_auc": 0.2256,
+    "tuned_std": 0.1092,
+    "default_pr_auc": 0.1818,
+    "gain": 0.0438,
+    "gain_std": 0.0615,
+    "folds_better": 9,
+    "folds": 10,
+    "inner_best": 0.2624,
+    "outer_minus_inner": -0.0368,
+    "reference_pr_auc": 0.386
+  },
+  {
+    "model": "knn",
+    "tuned_pr_auc": 0.2238,
+    "tuned_std": 0.1913,
+    "default_pr_auc": 0.0472,
+    "gain": 0.1765,
+    "gain_std": 0.1708,
+    "folds_better": 10,
+    "folds": 10,
+    "inner_best": 0.246,
+    "outer_minus_inner": -0.0223,
+    "reference_pr_auc": 0.386
+  },
+  {
+    "model": "mlp",
+    "tuned_pr_auc": 0.1621,
+    "tuned_std": 0.1533,
+    "default_pr_auc": 0.0401,
+    "gain": 0.122,
+    "gain_std": 0.1723,
+    "folds_better": 7,
+    "folds": 10,
+    "inner_best": 0.1509,
+    "outer_minus_inner": 0.0112,
+    "reference_pr_auc": 0.386
+  }
+]

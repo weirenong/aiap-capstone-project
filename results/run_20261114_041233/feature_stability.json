@@ -1,0 +1,154 @@
+[
+  {
+    "model": "knn",
+    "parameter": "model__n_neighbors",
+    "value": "35",
+    "selected": 6,
+    "folds": 10,
+    "share": 0.6
+  },
+  {
+    "model": "knn",
+    "parameter": "model__n_neighbors",
+    "value": "15",
+    "selected": 4,
+    "folds": 10,
+    "share": 0.4
+  },
+  {
+    "model": "knn",
+    "parameter": "model__weights",
+    "value": "distance",
+    "selected": 7,
+    "folds": 10,
+    "share": 0.7
+  },
+  {
+    "model": "knn",
+    "parameter": "model__weights",
+    "value": "uniform",
+    "selected": 3,
+    "folds": 10,
+    "share": 0.3
+  },
+  {
+    "model": "logistic regression",
+    "parameter": "model__C",
+    "value": "0.01",
+    "selected": 8,
+    "folds": 10,
+    "share": 0.8
+  },
+  {
+    "model": "logistic regression",
+    "parameter": "model__C",
+    "value": "1.0",
+    "selected": 1,
+    "folds": 10,
+    "share": 0.1
+  },
+  {
+    "model": "logistic regression",
+    "parameter": "model__C",
+    "value": "0.1",
+    "selected": 1,
+    "folds": 10,
+    "share": 0.1
+  },
+  {
+    "model": "logistic regression",
+    "parameter": "model__penalty",
+    "value": "l2",
+    "selected": 10,
+    "folds": 10,
+    "share": 1.0
+  },
+  {
+    "model": "mlp",
+    "parameter": "model__alpha",
+    "value": "0.0001",
+    "selected": 9,
+    "folds": 10,
+    "share": 0.9
+  },
+  {
+    "model": "mlp",
+    "parameter": "model__alpha",
+    "value": "0.01",
+    "selected": 1,
+    "folds": 10,
+    "share": 0.1
+  },
+  {
+    "model": "mlp",
+    "parameter": "model__hidden_layer_sizes",
+    "value": "(32, 16)",
+    "selected": 10,
+    "folds": 10,
+    "share": 1.0
+  },
+  {
+    "model": "random forest",
+    "parameter": "model__max_depth",
+    "value": "None",
+    "selected": 5,
+    "folds": 10,
+    "share": 0.5
+  },
+  {
+    "model": "random forest",
+    "parameter": "model__max_depth",
+    "value": "3",
+    "selected": 5,
+    "folds": 10,
+    "share": 0.5
+  },
+  {
+    "model": "random forest",
+    "parameter": "model__min_samples_leaf",
+    "value": "5",
+    "selected": 8,
+    "folds": 10,
+    "share": 0.8
+  },
+  {
+    "model": "random forest",
+    "parameter": "model__min_samples_leaf",
+    "value": "1",
+    "selected": 2,
+    "folds": 10,
+    "share": 0.2
+  },
+  {
+    "model": "rbf svm",
+    "parameter": "model__C",
+    "value": "0.1",
+    "selected": 8,
+    "folds": 10,
+    "share": 0.8
+  },
+  {
+    "model": "rbf svm",
+    "parameter": "model__C",
+    "value": "1.0",
+    "selected": 2,
+    "folds": 10,
+    "share": 0.2
+  },
+  {
+    "model": "rbf svm",
+    "parameter": "model__gamma",
+    "value": "0.01",
+    "selected": 9,
+    "folds": 10,
+    "share": 0.9
+  },
+  {
+    "model": "rbf svm",
+    "parameter": "model__gamma",
+    "value": "scale",
+    "selected": 1,
+    "folds": 10,
+    "share": 0.1
+  }
+]

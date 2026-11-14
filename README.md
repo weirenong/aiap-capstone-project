@@ -633,3 +633,67 @@ Issue 2 adds `advanced_threshold_free.csv`, `advanced_operating.csv`, `advanced_
 ### Update to the Issue 1 benchmark
 
 Issue 1 concluded "nothing in this sprint produces an open-set score above 0.65 AUROC". That was true of the score it tested. With a distance-based detector the open-set target is met — Mahalanobis at 0.86–0.89 — while the *click-prediction* target is still unmet, since no model beats the rule's 0.390 PR-AUC.
+
+---
+
+## Sprint 5, Issue 1: Cross-Validation and Hyperparameter Tuning
+
+Code: `src/model_optimization.py`. Run `python main.py` section 13. Adds about 50s to the run.
+
+### Why nested
+
+Tuning on the folds you then report is how a project manufactures an improvement: the search keeps whichever configuration fits that split, and the reported score includes the picking. With 19 positives the bias is easily bigger than the real differences. So tuning happens on inner folds inside each outer training split, and the outer fold is scored once.
+
+The prior-history rule is scored on those **same outer folds**, which makes the model-vs-reference margin paired rather than a comparison of numbers from two different CV runs. Two comparisons come out of one pass: tuned vs default, and tuned vs reference.
+
+### Results (10 outer folds, 3 inner folds)
+
+| Model | Tuned PR-AUC | Default | Gain | Folds better | Inner best | Outer − inner |
+|---|---|---|---|---|---|---|
+| logistic regression | **0.310 ± 0.125** | 0.243 | +0.067 | 6/10 | 0.310 | −0.000 |
+| RBF SVM | 0.298 ± 0.175 | 0.117 | **+0.181** | **10/10** | 0.311 | −0.013 |
+| random forest | 0.226 ± 0.109 | 0.182 | +0.044 | 9/10 | 0.262 | −0.037 |
+| k-NN | 0.224 ± 0.191 | 0.047 | +0.177 | **10/10** | 0.246 | −0.022 |
+| MLP (32-16) | 0.162 ± 0.153 | 0.040 | +0.122 | 7/10 | 0.151 | +0.011 |
+| *reference: prior-history rule* | *0.386* | — | — | — | — | — |
+
+### What the tuning actually bought
+
+1. **The gain tracks how bad the default was, not how good the model is.** The two biggest improvements are on the two models with the worst defaults — SVM +0.181 and k-NN +0.177, each winning 10 of 10 folds. Logistic regression, whose default `C=1.0` is already reasonable, gains +0.067 and wins only 6 of 10. Tuning is mostly repairing bad starting points, which is worth doing once and worth doing sceptically.
+2. **Nothing beats a one-line rule.** Best tuned model is 0.310 against the reference's 0.386 on identical folds. The gap (−0.076) is larger than the tie tolerance and larger than the tuned model's own advantage over its default.
+3. **The search did not overfit the inner folds much.** Outer-minus-inner is −0.037 to +0.011, so nested CV is not showing a dramatic optimism gap here. The grids are deliberately small (4-6 candidates), which is the reason: a wide search on 19 positives would have produced a much prettier and much less true inner score.
+4. **The parameter wins are mostly coin flips.** 12 of 19 parameter-value rows were chosen in under 80% of folds. Random forest's `max_depth` split 5/5 between `None` and `3` — that is not a tuned setting, it is noise. The consistent ones are informative though: `C=0.01` for logistic (8/10), `gamma=0.01` for the SVM (9/10), and `min_samples_leaf=5` for the forest (8/10) all point the same way — **the data wants heavy regularisation**, which is what you'd expect with 19 positives.
+
+### Overfitting and underfitting
+
+Learning curves, train vs cross-validated PR-AUC as rows are added:
+
+| Train rows | LR train | LR CV | Gap | RF train | RF CV | Gap |
+|---|---|---|---|---|---|---|
+| 20 | 1.000 | 0.121 | 0.879 | 1.000 | 0.137 | 0.863 |
+| 40 | 1.000 | 0.144 | 0.856 | 1.000 | 0.152 | 0.848 |
+| 60 | 1.000 | 0.142 | 0.858 | 1.000 | 0.160 | 0.840 |
+| 80 | 1.000 | 0.358 | 0.642 | 1.000 | 0.221 | 0.779 |
+| 100 | 0.961 | 0.286 | 0.675 | 1.000 | 0.274 | 0.726 |
+
+Both models memorise the training rows and generalise poorly — a gap of 0.64 to 0.88 that narrows only slowly as data is added. That is overfitting as a *structural property of the dataset*, not a hyperparameter mistake: no setting in either grid closes it, and the CV curve is still climbing at 100 rows, meaning the fix is more data rather than more tuning.
+
+The MLP is the underfitting case by contrast — tuned 0.162 with both train and validation low relative to its capacity, and only 7/10 folds improved by tuning. A two-layer network is the wrong shape for 19 positives.
+
+**Caveat on the learning curve.** With 1–2 positives per validation fold, average precision can only take values like 0, 0.5 and 1. The `std = 0.000` at the small sizes is that granularity, not stability, and the train score of exactly 1.000 means "the single positive was ranked first" rather than "perfect generalisation". The direction of the conclusion is sound; the precision of the numbers is not.
+
+### Final selection
+
+```
+selected: prior-history rule
+reason:   best tuned model (logistic regression) scores 0.310 PR-AUC against the
+          reference's 0.386 (margin -0.076), which is inside the 0.02 tie tolerance or
+          below its own std (0.125); the reference has no fitted parameters to go stale,
+          so it wins the tie
+```
+
+The selection rule is deliberately conservative: a tuned model is only preferred if it beats the reference by more than a 0.02 tolerance *and* by more than its own fold-to-fold std. That stops a 0.01 win on one split from becoming "the final model", which at this sample size would be a story rather than a finding.
+
+### Artifacts added
+
+`nested_cv_folds.csv` (50 rows), `nested_cv_summary.csv`, `tuning_stability.csv`, `learning_curve_lr.csv`, `learning_curve_rf.csv`, and `final_selection.json`. The persistence checks now cover 21 artifacts; `final_selection.json` is also referenced in `latest.json` as `final_model`.

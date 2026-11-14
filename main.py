@@ -492,7 +492,53 @@ def main() -> None:
     print(f"\nmahalanobis AUROC across six runs: {mahal['auroc'].min():.3f}-{mahal['auroc'].max():.3f}")
     print(f"classifier-head scores:            {head['auroc'].min():.3f}-{head['auroc'].max():.3f}")
 
-    rule("12. Persisting results")
+    rule("13. Cross-validation and hyperparameter tuning")
+
+    from src.model_optimization import (
+        learning_curve_report,
+        model_factories,
+        nested_cv,
+        select_final_model,
+        summarize_nested,
+        tuning_stability,
+    )
+
+    nested_folds, nested_params = nested_cv(
+        X_all,
+        y_all,
+        outer_repeats=2,
+        inner_splits=3,
+        reference_factory=lambda: PriorHistoryRuleClassifier(cut=0.5),
+    )
+    nested_summary = summarize_nested(nested_folds)
+    print("nested CV — tuning happens on inner folds, scoring on outer folds only:")
+    print(nested_summary.to_string(index=False))
+    print("\nreference_pr_auc is the prior-history rule scored on the same outer folds, "
+          "so the margin is paired. inner vs outer shows whether the search overfit the "
+          "inner folds: negative means the outer score came in below the inner estimate.")
+
+    stability = tuning_stability(nested_params)
+    print("\nhow often each parameter value won the inner search (10 outer folds):")
+    print(stability.to_string(index=False))
+    flips = stability[stability["share"] < 0.8]
+    print(f"\n{len(flips)} of {len(stability)} parameter-value rows are chosen in under "
+          f"80% of folds — those are coin flips, not tuned settings.")
+
+    scoreboard = learning_curve_report(model_factories()["logistic regression"], X_all, y_all)
+    print("\nlearning curve, logistic regression (train vs cross-validated PR-AUC):")
+    print(scoreboard.to_string(index=False))
+
+    tree_scoreboard = learning_curve_report(model_factories()["random forest"], X_all, y_all)
+    print("\nlearning curve, random forest:")
+    print(tree_scoreboard.to_string(index=False))
+
+    selection = select_final_model(
+        nested_summary, reference_pr_auc=float(nested_summary["reference_pr_auc"].iloc[0])
+    )
+    print(f"\nselected final model: {selection['selected']}")
+    print(f"  {selection['reason']}")
+
+    rule("14. Persisting results")
 
     from src.artifacts import (
         compare_runs,
@@ -555,6 +601,12 @@ def main() -> None:
     saved["advanced_folds"] = save_frame(adv_folds, "advanced_folds", run_dir)
     saved["paired_vs_rule"] = save_frame(paired, "paired_vs_rule", run_dir)
     saved["none_detectors"] = save_frame(detectors, "none_detectors", run_dir)
+    saved["nested_cv_folds"] = save_frame(nested_folds, "nested_cv_folds", run_dir)
+    saved["nested_cv_summary"] = save_frame(nested_summary, "nested_cv_summary", run_dir)
+    saved["tuning_stability"] = save_frame(stability, "tuning_stability", run_dir)
+    saved["learning_curve_lr"] = save_frame(scoreboard, "learning_curve_lr", run_dir)
+    saved["learning_curve_rf"] = save_frame(tree_scoreboard, "learning_curve_rf", run_dir)
+    saved["final_selection"] = save_json(selection, "final_selection", run_dir)
     saved["baseline_logistic"] = save_model(model, "baseline_logistic", run_dir)
 
     headline = {
@@ -566,6 +618,8 @@ def main() -> None:
         "open_set_auroc_best_distance": float(
             detectors.loc[detectors["score"] == "mahalanobis", "auroc"].max()
         ),
+        "final_model": selection["selected"],
+        "nested_cv_best": float(nested_summary["tuned_pr_auc"].max()),
         "rows": int(len(df)),
         "positives": int(df[TARGET].sum()),
     }
@@ -608,6 +662,8 @@ def main() -> None:
     check("cv_folds reloads", len(load_frame(run_dir, "cv_folds")) == len(folds))
     check("advanced folds reload", len(load_frame(run_dir, "advanced_folds")) == len(adv_folds))
     check("none-detector table reloads", len(load_frame(run_dir, "none_detectors")) == len(detectors))
+    check("nested CV folds reload", len(load_frame(run_dir, "nested_cv_folds")) == len(nested_folds))
+    check("final selection reloads", load_json(run_dir, "final_selection")["selected"] == selection["selected"])
     check("cv_summary reloads", len(load_frame(run_dir, "cv_summary")) == len(summary))
     check(
         "open-set report reloads",
