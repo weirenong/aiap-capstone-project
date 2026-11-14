@@ -1,0 +1,50 @@
+[
+  {
+    "model": "knn (k=15)",
+    "recall_mean": 0.76,
+    "recall_std": 0.1989,
+    "precision_mean": 0.1016,
+    "f1_mean": 0.1785,
+    "achieved_flag_rate": 0.1503
+  },
+  {
+    "model": "random forest",
+    "recall_mean": 0.7083,
+    "recall_std": 0.2111,
+    "precision_mean": 0.17,
+    "f1_mean": 0.2715,
+    "achieved_flag_rate": 0.0858
+  },
+  {
+    "model": "prior-history rule",
+    "recall_mean": 0.7017,
+    "recall_std": 0.2452,
+    "precision_mean": 0.1722,
+    "f1_mean": 0.2726,
+    "achieved_flag_rate": 0.0831
+  },
+  {
+    "model": "logistic regression",
+    "recall_mean": 0.5783,
+    "recall_std": 0.2191,
+    "precision_mean": 0.1411,
+    "f1_mean": 0.2246,
+    "achieved_flag_rate": 0.0827
+  },
+  {
+    "model": "rbf svm",
+    "recall_mean": 0.48,
+    "recall_std": 0.2205,
+    "precision_mean": 0.1083,
+    "f1_mean": 0.175,
+    "achieved_flag_rate": 0.0896
+  },
+  {
+    "model": "mlp (32-16)",
+    "recall_mean": 0.3433,
+    "recall_std": 0.2501,
+    "precision_mean": 0.083,
+    "f1_mean": 0.1319,
+    "achieved_flag_rate": 0.0855
+  }
+]

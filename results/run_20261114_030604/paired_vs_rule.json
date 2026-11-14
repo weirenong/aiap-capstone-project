@@ -1,0 +1,42 @@
+[
+  {
+    "model": "random forest",
+    "mean_delta": -0.1254,
+    "std_delta": 0.1475,
+    "wins": 11,
+    "folds": 50,
+    "win_rate": 0.22
+  },
+  {
+    "model": "logistic regression",
+    "mean_delta": -0.1317,
+    "std_delta": 0.2035,
+    "wins": 11,
+    "folds": 50,
+    "win_rate": 0.22
+  },
+  {
+    "model": "rbf svm",
+    "mean_delta": -0.2239,
+    "std_delta": 0.1895,
+    "wins": 4,
+    "folds": 50,
+    "win_rate": 0.08
+  },
+  {
+    "model": "mlp (32-16)",
+    "mean_delta": -0.234,
+    "std_delta": 0.2039,
+    "wins": 7,
+    "folds": 50,
+    "win_rate": 0.14
+  },
+  {
+    "model": "knn (k=15)",
+    "mean_delta": -0.2509,
+    "std_delta": 0.1551,
+    "wins": 2,
+    "folds": 50,
+    "win_rate": 0.04
+  }
+]

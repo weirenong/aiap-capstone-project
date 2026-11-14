@@ -444,7 +444,7 @@ Held-out category as the unknown class, none score = 1 − max probability:
 | Travel | 143 | 0.607 | 7.7% |
 | Education | 44 | 0.645 | 4.5% |
 
-0.5 is chance. 0.61–0.65 is barely above it, and at a 5% false-positive budget the score catches 3–8% of unknowns — in practice, nothing. Mean none scores are higher for unknown rows than known ones (0.10–0.14 vs 0.07–0.09), so there is a trace of signal, but nowhere near usable. This is the measured form of the gap Sprint 1 opened: a closed-set classifier has no mechanism for saying "none of mine", and dressing it with 1 − max softmax is not one.
+0.5 is chance. 0.61–0.65 is barely above it, and at a 5% false-positive budget the score catches 3–8% of unknowns — in practice, nothing. Mean none scores are higher for unknown rows than known ones (0.10–0.14 vs 0.07–0.09), so there is a trace of signal, but nowhere near usable. This is the measured form of the gap Sprint 1 opened: a closed-set classifier has no mechanism for saying "none of mine", and dressing it with 1 − max softmax is not one. **Update:** Issue 2 shows this is a limit of the *score*, not the problem — a Mahalanobis detector reaches 0.86–0.89 AUROC on the same holdouts.
 
 The three holdouts are also the honest caveat — semantic shift dominates open-set difficulty, so a single holdout would have been meaningless either way.
 
@@ -461,7 +461,7 @@ The lesson is the same one from Sprints 3.1 and 3.2 — a metric can look like a
 
 - **To beat:** prior-history rule — PR-AUC 0.390, ROC-AUC 0.913, recall 0.702 at an 8.5% flag rate.
 - **Realistic target:** a model that beats 0.39 PR-AUC outside its standard deviation, on features that aren't just prior clicks, without resampling leakage.
-- **Also required:** an open-set score with AUROC meaningfully above 0.65 and a detection rate that isn't inside a 5% false-positive budget. Nothing in this sprint does that.
+- **Also required:** an open-set score with AUROC meaningfully above 0.65 and a detection rate that isn't inside a 5% false-positive budget. Nothing in Issue 1 does that; Issue 2 finds a detector that does (Mahalanobis, 0.86–0.89 AUROC).
 - **Report the std.** At 19 positives a bare mean is a claim about a coin.
 
 ---
@@ -476,7 +476,7 @@ The pipeline previously produced clean tables and report objects, then printed t
 |---|---|
 | `manifest.json` | Run id, UTC timestamp, git commit, Python and package versions, data file sha256 and size, full config (target, features, flag rates, CV settings, seed, cut points) |
 | `data_quality.json` | Filter report (45 under-18 rows removed, 1 positive lost), split sizes, positive rates |
-| `cv_folds.csv/.json` | All 500 rows: every fold × model × flag rate, with thresholds and confusion counts |
+| `cv_folds.csv/.json` | All 600 rows: every fold × model × flag rate, with thresholds and confusion counts |
 | `cv_summary.csv/.json` | Mean and std per model and flag rate, including Brier |
 | `baseline_threshold_free.csv` | PR-AUC, ROC-AUC, Brier per model |
 | `baseline_operating.csv` | Recall, precision, F1, achieved flag rate at 8.5% |
@@ -503,7 +503,7 @@ Section 11 fails the run if any of these break:
 | Check | Result |
 |---|---|
 | Manifest written | pass |
-| `cv_folds` row count survives the round trip | pass (500 rows) |
+| `cv_folds` row count survives the round trip | pass (600 rows) |
 | `cv_summary` row count survives | pass (12 rows) |
 | Open-set reports reload | pass (3 reports) |
 | Reloaded model predicts identically | pass, `np.allclose` to the original |
@@ -547,3 +547,89 @@ The rule model's Brier (0.092) is the one number in that table that shouldn't be
 - `main.py` — section 11, plus the Brier column flowing into the summary.
 - `requirements.txt` — `joblib` added, pins grouped by purpose.
 - `results/` — now populated by each run; `results/latest.json` points at the newest one.
+
+---
+
+## Sprint 4, Issue 2: Advanced Models and None Detection
+
+Code: `src/advanced_models.py`. Run `python main.py` section 11. Three architectures were added; the baselines are reused verbatim from Issue 1 so the tables describe the same models rather than similarly-named ones.
+
+### The three architectures
+
+| Model | Family | Why it's a fair second opinion |
+|---|---|---|
+| RBF SVM | margin-based | Different geometry to trees and to a linear model; needs scaling, which the pipeline already does. `probability=True` adds Platt calibration per fold. |
+| MLP (32, 16) | neural | The architecture "advanced" usually implies. Included because it should be tested, not because 19 positives can support it. |
+| k-NN (k=15, distance-weighted) | instance-based | No fitted decision boundary at all — the natural contrast to everything else, and the classifier whose score ties matter most. |
+
+### Results
+
+Threshold-free, 5-fold ×10:
+
+| Model | PR-AUC | ROC-AUC | Brier |
+|---|---|---|---|
+| prior-history rule | **0.390 ± 0.166** | **0.913 ± 0.049** | 0.092 |
+| random forest | 0.265 ± 0.162 | 0.874 ± 0.084 | 0.032 |
+| logistic regression | 0.258 ± 0.150 | 0.822 ± 0.099 | 0.095 |
+| **RBF SVM** | 0.166 ± 0.101 | 0.790 ± 0.123 | 0.019 |
+| **MLP (32-16)** | 0.156 ± 0.124 | 0.629 ± 0.176 | 0.085 |
+| **k-NN (k=15)** | 0.139 ± 0.069 | 0.816 ± 0.099 | 0.019 |
+
+At an 8.5% flag rate:
+
+| Model | Recall | Precision | F1 | Achieved flag rate |
+|---|---|---|---|---|
+| k-NN (k=15) | 0.760 | 0.102 | 0.179 | **15.0%** |
+| random forest | 0.708 | 0.170 | 0.272 | 8.6% |
+| prior-history rule | 0.702 | 0.172 | 0.273 | 8.3% |
+| logistic regression | 0.578 | 0.141 | 0.225 | 8.3% |
+| RBF SVM | 0.480 | 0.108 | 0.175 | 9.0% |
+| MLP (32-16) | 0.343 | 0.083 | 0.132 | 8.6% |
+
+### Relative performance, paired
+
+Same folds for every model, so the useful statistic is the per-fold difference from the reference rather than two independent means:
+
+| Model | Mean Δ PR-AUC | Std Δ | Folds won (of 50) |
+|---|---|---|---|
+| random forest | −0.125 | 0.148 | 11 |
+| logistic regression | −0.132 | 0.204 | 11 |
+| RBF SVM | −0.224 | 0.190 | 4 |
+| MLP (32-16) | −0.234 | 0.204 | 7 |
+| k-NN (k=15) | −0.251 | 0.155 | 2 |
+
+Every model loses to a one-line threshold, and loses on 39–48 of 50 folds. This isn't a close call distorted by variance: if two models were equivalent you'd expect ~25 wins.
+
+Three specific readings:
+
+1. **More capacity made things worse.** SVM and MLP are the two lowest-scoring models. With 19 positives, both have far more parameters than the problem can identify — the MLP's ROC-AUC of 0.629 is barely above chance, and its Brier score (0.085) is worse than the floor's 0.020. This is the tabular literature's point stated as a measurement, not an opinion: complexity has to be earned.
+2. **k-NN's recall advantage is not an advantage.** 0.760 recall beats the rule's 0.702 — but it achieves that by flagging **15.0% of rows when the budget was 8.5%**, because distance-weighted k-NN scores are heavily tied and the threshold cannot land inside the budget. Precision (0.102 vs 0.172) and PR-AUC (0.139 vs 0.390) both show it. An operating point that spends nearly double the flag rate is not a comparison.
+3. **The SVM's Brier score is the best of any real model (0.019)** while its ranking is third worst. Platt scaling on 15 positives produces confident, well-ordered-in-aggregate probabilities that are useless for ranking the rare class. Good calibration on a bad ranker is a trap worth recognising.
+
+### None detection: the result that changed
+
+`models.none_score` used 1 − max probability. Here four alternatives are compared on the same held-out-category task: max probability, decision margin, energy, Mahalanobis distance from the training feature distribution, and k-NN distance.
+
+| Score | AUROC (6 runs) | Detection at 5% FPR |
+|---|---|---|
+| **Mahalanobis** | **0.864 – 0.890** | 20–27% |
+| max probability | 0.572 – 0.645 | 3–13% |
+| k-NN distance | 0.559 – 0.607 | 5–12% |
+| decision margin | 0.336 – 0.428 | 0–2% |
+| energy | 0.336 – 0.428 | 0–2% |
+
+Three findings, in order of importance:
+
+1. **Mahalanobis works, and nothing else does.** 0.86–0.89 AUROC against 0.34–0.65 for the classifier-head scores, and 20–27% detection inside a 5% false-positive budget. The earlier conclusion — that this problem had no usable none detector — was correct about *softmax scores* and wrong as a statement about the problem. Feature-space distance sees the unknown class; the penultimate-layer confidence does not.
+2. **Energy and margin are numerically identical** (0.428 and 0.428, every run). That is not a coincidence: for a binary classifier the energy is `−log(1 + exp(f))`, a monotone function of the margin, so it cannot rank differently. Energy-based detection earns its reputation in multiclass settings; in binary it is the margin with extra steps. Likewise, the detector depends only on the preprocessing, so logistic and SVM produce byte-identical Mahalanobis scores — the representation carries the signal, not the classifier.
+3. **The head scores point the wrong way.** AUROC below 0.5 means unknown rows look *more* like clicks than known rows do — consistent with the Issue 1 finding that held-out categories scored higher. A model trained only on closed-set classes has no reason to place a new class low; the confidence head is the wrong instrument.
+
+**Caveat, stated plainly:** the strongest component of the Mahalanobis signal is almost certainly the one-hot category block. The encoder maps an unseen category to all zeros (`handle_unknown="ignore"`), so a held-out row is far from every training row *by construction*. That is legitimate behaviour for this data type — "nothing matches any known category" is a real signal — but it will not generalise to purely continuous features, where there is no flag to go missing. Reporting 0.89 AUROC without that caveat would overstate what was shown.
+
+### Artifacts
+
+Issue 2 adds `advanced_threshold_free.csv`, `advanced_operating.csv`, `advanced_folds.csv` (600 fold rows), `paired_vs_rule.csv` and `none_detectors.csv` to every run. The persistence checks in section 12 now cover 15 artifacts and fail the run if the advanced tables don't reload with their original row counts.
+
+### Update to the Issue 1 benchmark
+
+Issue 1 concluded "nothing in this sprint produces an open-set score above 0.65 AUROC". That was true of the score it tested. With a distance-based detector the open-set target is met — Mahalanobis at 0.86–0.89 — while the *click-prediction* target is still unmet, since no model beats the rule's 0.390 PR-AUC.

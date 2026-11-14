@@ -420,7 +420,79 @@ def main() -> None:
           "false-positive budget the score catches 3-8% of unknowns, so in practice it "
           "detects nothing. That is the gap Sprint 1 named, measured on three holdouts.")
 
-    rule("11. Persisting results")
+    rule("11. Advanced models and none detection")
+
+    from src.advanced_models import (
+        knn_pipeline,
+        mlp_pipeline,
+        none_detector_comparison,
+        paired_comparison,
+        svm_pipeline,
+    )
+
+    # Reuse the section-10 factories verbatim so the two comparison tables describe the
+    # same models. Re-declaring them here is how a "random forest" quietly becomes a
+    # different random forest between tables.
+    advanced_factories = {
+        name: baseline_factories[name]
+        for name in ("prior-history rule", "logistic regression", "random forest")
+    }
+    advanced_factories.update(
+        {
+            "rbf svm": lambda: svm_pipeline(),
+            "mlp (32-16)": lambda: mlp_pipeline(),
+            "knn (k=15)": lambda: knn_pipeline(),
+        }
+    )
+
+    adv_folds, adv_summary = cross_validate_models(
+        X_all, y_all, advanced_factories, flag_rates=(0.05, 0.085), n_repeats=10
+    )
+    adv_threshold_free = adv_summary.drop_duplicates("model")[
+        ["model", "pr_auc_mean", "pr_auc_std", "roc_auc_mean", "roc_auc_std", "brier_mean"]
+    ].sort_values("pr_auc_mean", ascending=False)
+    print("threshold-free:")
+    print(adv_threshold_free.to_string(index=False))
+
+    adv_operating = adv_summary[adv_summary["flag_rate_target"] == 0.085][
+        ["model", "recall_mean", "recall_std", "precision_mean", "f1_mean", "achieved_flag_rate"]
+    ].sort_values("recall_mean", ascending=False)
+    print("\nat an 8.5% flag rate:")
+    print(adv_operating.to_string(index=False))
+
+    paired = paired_comparison(adv_folds, reference="prior-history rule", metric="pr_auc")
+    print("\npaired per-fold delta in PR-AUC against the prior-history rule "
+          "(50 folds, same folds for every model):")
+    print(paired.to_string(index=False))
+    print("\nA negative mean delta with a similar-sized std and few wins means the model "
+          "did not beat the rule; it lost on most folds rather than tying.")
+
+    print("\nNone-detector comparison on held-out categories")
+    print("(fitted on known classes only; every score ranks unknown rows against held-out known rows)")
+    detector_rows = []
+    for classifier_name, factory in {
+        "logistic": lambda: build_model(
+            LogisticRegression(max_iter=1000, class_weight="balanced", random_state=RANDOM_STATE)
+        ),
+        "rbf svm": svm_pipeline,
+    }.items():
+        for holdout in ["Gaming", "Travel", "Education"]:
+            X_tr, X_te, y_tr, y_te, unknown_df = make_open_set_split(df, holdout)
+            table = none_detector_comparison(
+                X_tr, y_tr, X_te, unknown_df[list(FEATURES)], classifier_factory=factory
+            )
+            table.insert(0, "classifier", classifier_name)
+            table.insert(1, "holdout", holdout)
+            detector_rows.append(table)
+    detectors = pd.concat(detector_rows, ignore_index=True)
+    print(detectors.to_string(index=False))
+
+    mahal = detectors[detectors["score"] == "mahalanobis"]
+    head = detectors[detectors["score"].isin(["max probability", "decision margin", "energy"])]
+    print(f"\nmahalanobis AUROC across six runs: {mahal['auroc'].min():.3f}-{mahal['auroc'].max():.3f}")
+    print(f"classifier-head scores:            {head['auroc'].min():.3f}-{head['auroc'].max():.3f}")
+
+    rule("12. Persisting results")
 
     from src.artifacts import (
         compare_runs,
@@ -476,6 +548,13 @@ def main() -> None:
     saved["feature_stability"] = save_frame(stability, "feature_stability", run_dir)
     saved["open_set_results"] = save_frame(unknown_table, "open_set_results", run_dir)
     saved["open_set_reports"] = save_json(open_set_reports, "open_set_reports", run_dir)
+    saved["advanced_threshold_free"] = save_frame(
+        adv_threshold_free, "advanced_threshold_free", run_dir
+    )
+    saved["advanced_operating"] = save_frame(adv_operating, "advanced_operating", run_dir)
+    saved["advanced_folds"] = save_frame(adv_folds, "advanced_folds", run_dir)
+    saved["paired_vs_rule"] = save_frame(paired, "paired_vs_rule", run_dir)
+    saved["none_detectors"] = save_frame(detectors, "none_detectors", run_dir)
     saved["baseline_logistic"] = save_model(model, "baseline_logistic", run_dir)
 
     headline = {
@@ -483,7 +562,10 @@ def main() -> None:
         "best_model_by_pr_auc": str(
             summary.drop_duplicates("model").sort_values("pr_auc_mean", ascending=False).iloc[0]["model"]
         ),
-        "open_set_auroc_best": float(unknown_table["auroc"].max()),
+        "open_set_auroc_best_head_score": float(unknown_table["auroc"].max()),
+        "open_set_auroc_best_distance": float(
+            detectors.loc[detectors["score"] == "mahalanobis", "auroc"].max()
+        ),
         "rows": int(len(df)),
         "positives": int(df[TARGET].sum()),
     }
@@ -524,6 +606,8 @@ def main() -> None:
     # Round-trip: an artifact that cannot be loaded back is not persistence.
     check("manifest written", (run_dir / "manifest.json").exists())
     check("cv_folds reloads", len(load_frame(run_dir, "cv_folds")) == len(folds))
+    check("advanced folds reload", len(load_frame(run_dir, "advanced_folds")) == len(adv_folds))
+    check("none-detector table reloads", len(load_frame(run_dir, "none_detectors")) == len(detectors))
     check("cv_summary reloads", len(load_frame(run_dir, "cv_summary")) == len(summary))
     check(
         "open-set report reloads",

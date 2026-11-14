@@ -1,0 +1,302 @@
+[
+  {
+    "classifier": "logistic",
+    "holdout": "Gaming",
+    "score": "mahalanobis",
+    "auroc": 0.864,
+    "aupr": 0.692,
+    "detection_at_5fpr": 0.234,
+    "known_mean": 4.049,
+    "unknown_mean": 5.291
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Gaming",
+    "score": "max probability",
+    "auroc": 0.642,
+    "aupr": 0.437,
+    "detection_at_5fpr": 0.032,
+    "known_mean": 0.073,
+    "unknown_mean": 0.099
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Gaming",
+    "score": "knn",
+    "auroc": 0.559,
+    "aupr": 0.423,
+    "detection_at_5fpr": 0.096,
+    "known_mean": 2.012,
+    "unknown_mean": 2.102
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Gaming",
+    "score": "decision margin",
+    "auroc": 0.344,
+    "aupr": 0.265,
+    "detection_at_5fpr": 0.0,
+    "known_mean": 3.453,
+    "unknown_mean": 1.776
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Gaming",
+    "score": "energy",
+    "auroc": 0.344,
+    "aupr": 0.265,
+    "detection_at_5fpr": 0.0,
+    "known_mean": -0.406,
+    "unknown_mean": -0.713
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Travel",
+    "score": "mahalanobis",
+    "auroc": 0.879,
+    "aupr": 0.809,
+    "detection_at_5fpr": 0.273,
+    "known_mean": 4.06,
+    "unknown_mean": 5.289
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Travel",
+    "score": "max probability",
+    "auroc": 0.607,
+    "aupr": 0.524,
+    "detection_at_5fpr": 0.077,
+    "known_mean": 0.091,
+    "unknown_mean": 0.115
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Travel",
+    "score": "knn",
+    "auroc": 0.567,
+    "aupr": 0.515,
+    "detection_at_5fpr": 0.119,
+    "known_mean": 2.044,
+    "unknown_mean": 2.131
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Travel",
+    "score": "decision margin",
+    "auroc": 0.392,
+    "aupr": 0.386,
+    "detection_at_5fpr": 0.007,
+    "known_mean": 3.545,
+    "unknown_mean": 2.449
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Travel",
+    "score": "energy",
+    "auroc": 0.392,
+    "aupr": 0.386,
+    "detection_at_5fpr": 0.007,
+    "known_mean": -0.315,
+    "unknown_mean": -0.411
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Education",
+    "score": "mahalanobis",
+    "auroc": 0.89,
+    "aupr": 0.551,
+    "detection_at_5fpr": 0.205,
+    "known_mean": 4.048,
+    "unknown_mean": 5.445
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Education",
+    "score": "max probability",
+    "auroc": 0.645,
+    "aupr": 0.276,
+    "detection_at_5fpr": 0.045,
+    "known_mean": 0.093,
+    "unknown_mean": 0.14
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Education",
+    "score": "knn",
+    "auroc": 0.607,
+    "aupr": 0.241,
+    "detection_at_5fpr": 0.045,
+    "known_mean": 1.99,
+    "unknown_mean": 2.091
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Education",
+    "score": "decision margin",
+    "auroc": 0.336,
+    "aupr": 0.143,
+    "detection_at_5fpr": 0.023,
+    "known_mean": 2.753,
+    "unknown_mean": 1.102
+  },
+  {
+    "classifier": "logistic",
+    "holdout": "Education",
+    "score": "energy",
+    "auroc": 0.336,
+    "aupr": 0.143,
+    "detection_at_5fpr": 0.023,
+    "known_mean": -0.521,
+    "unknown_mean": -0.845
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Gaming",
+    "score": "mahalanobis",
+    "auroc": 0.864,
+    "aupr": 0.692,
+    "detection_at_5fpr": 0.234,
+    "known_mean": 4.049,
+    "unknown_mean": 5.291
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Gaming",
+    "score": "max probability",
+    "auroc": 0.572,
+    "aupr": 0.438,
+    "detection_at_5fpr": 0.096,
+    "known_mean": 0.014,
+    "unknown_mean": 0.02
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Gaming",
+    "score": "knn",
+    "auroc": 0.559,
+    "aupr": 0.423,
+    "detection_at_5fpr": 0.096,
+    "known_mean": 2.012,
+    "unknown_mean": 2.102
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Gaming",
+    "score": "decision margin",
+    "auroc": 0.428,
+    "aupr": 0.316,
+    "detection_at_5fpr": 0.021,
+    "known_mean": 1.5,
+    "unknown_mean": 1.339
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Gaming",
+    "score": "energy",
+    "auroc": 0.428,
+    "aupr": 0.316,
+    "detection_at_5fpr": 0.021,
+    "known_mean": -0.229,
+    "unknown_mean": -0.273
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Travel",
+    "score": "mahalanobis",
+    "auroc": 0.879,
+    "aupr": 0.809,
+    "detection_at_5fpr": 0.273,
+    "known_mean": 4.06,
+    "unknown_mean": 5.289
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Travel",
+    "score": "max probability",
+    "auroc": 0.572,
+    "aupr": 0.529,
+    "detection_at_5fpr": 0.126,
+    "known_mean": 0.016,
+    "unknown_mean": 0.019
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Travel",
+    "score": "knn",
+    "auroc": 0.567,
+    "aupr": 0.515,
+    "detection_at_5fpr": 0.119,
+    "known_mean": 2.044,
+    "unknown_mean": 2.131
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Travel",
+    "score": "decision margin",
+    "auroc": 0.428,
+    "aupr": 0.42,
+    "detection_at_5fpr": 0.014,
+    "known_mean": 1.376,
+    "unknown_mean": 1.235
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Travel",
+    "score": "energy",
+    "auroc": 0.428,
+    "aupr": 0.42,
+    "detection_at_5fpr": 0.014,
+    "known_mean": -0.258,
+    "unknown_mean": -0.298
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Education",
+    "score": "mahalanobis",
+    "auroc": 0.89,
+    "aupr": 0.551,
+    "detection_at_5fpr": 0.205,
+    "known_mean": 4.048,
+    "unknown_mean": 5.445
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Education",
+    "score": "max probability",
+    "auroc": 0.608,
+    "aupr": 0.257,
+    "detection_at_5fpr": 0.045,
+    "known_mean": 0.023,
+    "unknown_mean": 0.03
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Education",
+    "score": "knn",
+    "auroc": 0.607,
+    "aupr": 0.241,
+    "detection_at_5fpr": 0.045,
+    "known_mean": 1.99,
+    "unknown_mean": 2.091
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Education",
+    "score": "decision margin",
+    "auroc": 0.392,
+    "aupr": 0.158,
+    "detection_at_5fpr": 0.0,
+    "known_mean": 1.308,
+    "unknown_mean": 1.009
+  },
+  {
+    "classifier": "rbf svm",
+    "holdout": "Education",
+    "score": "energy",
+    "auroc": 0.392,
+    "aupr": 0.158,
+    "detection_at_5fpr": 0.0,
+    "known_mean": -0.298,
+    "unknown_mean": -0.377
+  }
+]

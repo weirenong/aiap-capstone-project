@@ -1,0 +1,7 @@
+model,recall_mean,recall_std,precision_mean,f1_mean,achieved_flag_rate
+knn (k=15),0.76,0.1989,0.1016,0.1785,0.1503
+random forest,0.7083,0.2111,0.17,0.2715,0.0858
+prior-history rule,0.7017,0.2452,0.1722,0.2726,0.0831
+logistic regression,0.5783,0.2191,0.1411,0.2246,0.0827
+rbf svm,0.48,0.2205,0.1083,0.175,0.0896
+mlp (32-16),0.3433,0.2501,0.083,0.1319,0.0855

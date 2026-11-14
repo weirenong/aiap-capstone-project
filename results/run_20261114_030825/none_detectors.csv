@@ -1,0 +1,31 @@
+classifier,holdout,score,auroc,aupr,detection_at_5fpr,known_mean,unknown_mean
+logistic,Gaming,mahalanobis,0.864,0.692,0.234,4.049,5.291
+logistic,Gaming,max probability,0.642,0.437,0.032,0.073,0.099
+logistic,Gaming,knn,0.559,0.423,0.096,2.012,2.102
+logistic,Gaming,decision margin,0.344,0.265,0.0,3.453,1.776
+logistic,Gaming,energy,0.344,0.265,0.0,-0.406,-0.713
+logistic,Travel,mahalanobis,0.879,0.809,0.273,4.06,5.289
+logistic,Travel,max probability,0.607,0.524,0.077,0.091,0.115
+logistic,Travel,knn,0.567,0.515,0.119,2.044,2.131
+logistic,Travel,decision margin,0.392,0.386,0.007,3.545,2.449
+logistic,Travel,energy,0.392,0.386,0.007,-0.315,-0.411
+logistic,Education,mahalanobis,0.89,0.551,0.205,4.048,5.445
+logistic,Education,max probability,0.645,0.276,0.045,0.093,0.14
+logistic,Education,knn,0.607,0.241,0.045,1.99,2.091
+logistic,Education,decision margin,0.336,0.143,0.023,2.753,1.102
+logistic,Education,energy,0.336,0.143,0.023,-0.521,-0.845
+rbf svm,Gaming,mahalanobis,0.864,0.692,0.234,4.049,5.291
+rbf svm,Gaming,max probability,0.572,0.438,0.096,0.014,0.02
+rbf svm,Gaming,knn,0.559,0.423,0.096,2.012,2.102
+rbf svm,Gaming,decision margin,0.428,0.316,0.021,1.5,1.339
+rbf svm,Gaming,energy,0.428,0.316,0.021,-0.229,-0.273
+rbf svm,Travel,mahalanobis,0.879,0.809,0.273,4.06,5.289
+rbf svm,Travel,max probability,0.572,0.529,0.126,0.016,0.019
+rbf svm,Travel,knn,0.567,0.515,0.119,2.044,2.131
+rbf svm,Travel,decision margin,0.428,0.42,0.014,1.376,1.235
+rbf svm,Travel,energy,0.428,0.42,0.014,-0.258,-0.298
+rbf svm,Education,mahalanobis,0.89,0.551,0.205,4.048,5.445
+rbf svm,Education,max probability,0.608,0.257,0.045,0.023,0.03
+rbf svm,Education,knn,0.607,0.241,0.045,1.99,2.091
+rbf svm,Education,decision margin,0.392,0.158,0.0,1.308,1.009
+rbf svm,Education,energy,0.392,0.158,0.0,-0.298,-0.377

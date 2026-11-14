@@ -1,0 +1,7 @@
+model,pr_auc_mean,pr_auc_std,roc_auc_mean,roc_auc_std,brier_mean
+prior-history rule,0.3899,0.1656,0.9127,0.0486,0.0918
+random forest,0.2645,0.1618,0.874,0.0837,0.0317
+logistic regression,0.2581,0.1496,0.8221,0.0985,0.0951
+rbf svm,0.166,0.101,0.7901,0.1229,0.0194
+mlp (32-16),0.1558,0.1237,0.6288,0.1762,0.0854
+knn (k=15),0.1389,0.0692,0.8159,0.0987,0.0193

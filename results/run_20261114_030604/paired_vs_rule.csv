@@ -1,0 +1,6 @@
+model,mean_delta,std_delta,wins,folds,win_rate
+random forest,-0.1254,0.1475,11,50,0.22
+logistic regression,-0.1317,0.2035,11,50,0.22
+rbf svm,-0.2239,0.1895,4,50,0.08
+mlp (32-16),-0.234,0.2039,7,50,0.14
+knn (k=15),-0.2509,0.1551,2,50,0.04

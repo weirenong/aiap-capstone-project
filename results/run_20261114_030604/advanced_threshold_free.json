@@ -1,0 +1,50 @@
+[
+  {
+    "model": "prior-history rule",
+    "pr_auc_mean": 0.3899,
+    "pr_auc_std": 0.1656,
+    "roc_auc_mean": 0.9127,
+    "roc_auc_std": 0.0486,
+    "brier_mean": 0.0918
+  },
+  {
+    "model": "random forest",
+    "pr_auc_mean": 0.2645,
+    "pr_auc_std": 0.1618,
+    "roc_auc_mean": 0.874,
+    "roc_auc_std": 0.0837,
+    "brier_mean": 0.0317
+  },
+  {
+    "model": "logistic regression",
+    "pr_auc_mean": 0.2581,
+    "pr_auc_std": 0.1496,
+    "roc_auc_mean": 0.8221,
+    "roc_auc_std": 0.0985,
+    "brier_mean": 0.0951
+  },
+  {
+    "model": "rbf svm",
+    "pr_auc_mean": 0.166,
+    "pr_auc_std": 0.101,
+    "roc_auc_mean": 0.7901,
+    "roc_auc_std": 0.1229,
+    "brier_mean": 0.0194
+  },
+  {
+    "model": "mlp (32-16)",
+    "pr_auc_mean": 0.1558,
+    "pr_auc_std": 0.1237,
+    "roc_auc_mean": 0.6288,
+    "roc_auc_std": 0.1762,
+    "brier_mean": 0.0854
+  },
+  {
+    "model": "knn (k=15)",
+    "pr_auc_mean": 0.1389,
+    "pr_auc_std": 0.0692,
+    "roc_auc_mean": 0.8159,
+    "roc_auc_std": 0.0987,
+    "brier_mean": 0.0193
+  }
+]
