@@ -247,3 +247,68 @@ So the pipeline is competitive with the rule but does not beat it, on a test set
 - **The under-18 filter costs 5% of the minority class.** It's the right call ethically, but it is a real cost at 20 positives — confirm it's staying before Sprint 4, and report 19 positives rather than 20 from here on.
 - **The 0.5 low-history cut** is EDA-derived. Re-check it inside CV rather than treating it as fixed.
 - **`remove_outliers` is deliberately not implemented as row deletion.** If the modelling sprint wants to compare clipping against dropping, that's a separate branch, not a flag on this pipeline.
+
+---
+
+## Sprint 3, Issue 2: Feature Engineering and Selection
+
+Code: `src/feature_engineering.py`. Run the comparison with `python main.py` (section 9). `preprocessing.py` now imports its `PriorHistoryFeatures` from here, so there is one definition and a one-way dependency.
+
+### What's in the module
+
+**Feature creation** — three transformers, all `fit`-on-the-fold only:
+
+| Builder | What it adds | Why |
+|---|---|---|
+| `PriorHistoryFeatures` | `prev_clicks__log1p`, `prev_clicks__low_history` | The EDA showed a step at ≤ 0.5 prior clicks, not a slope; a linear model can't represent a step. `log1p` softens the skew. |
+| `AgeBandFeatures` | 5 one-hot age bands | Age was flat (p = 0.63), which is a reason to test for a non-linear effect, not a reason to drop the column. |
+| `PairwiseInteractionFeatures` | one-hot crosses, e.g. device × time of day | The EDA said any remaining signal would be an interaction, so the hypothesis is testable instead of assumed. Unseen combinations encode to all zeros, same logic as `handle_unknown="ignore"`. |
+
+**Feature selection** — `FeatureSelector`, a transformer that sits *inside* the pipeline so it is refitted per fold. Two strategies: mutual information (top-k) and L1 logistic coefficients. Selection outside the fold is the same leakage as scaling on the full frame, and it is the more common version of it.
+
+**Diagnostics** — `evaluate_pipelines` (repeated stratified 5×10 CV, PR-AUC and recall at a fixed flag rate, threshold taken from the training fold each time) and `selection_frequency` (how often each feature survives across 50 fits). `selection_frequency` is the point: at 19 positives a single global ranking is noise, so the honest question is whether a feature survives refits.
+
+### Results
+
+Repeated stratified 5-fold ×10 on all 19 positives. Ranked by PR-AUC; the std column is the one that matters:
+
+| Feature set | n | PR-AUC mean | PR-AUC std | Recall mean | Recall std |
+|---|---|---|---|---|---|
+| + prior history + select (MI) | 12 | 0.2705 | 0.1372 | 0.622 | 0.197 |
+| + prior history + age bands | 29 | 0.2641 | 0.1614 | 0.582 | 0.211 |
+| + prior history | 24 | 0.2581 | 0.1481 | 0.593 | 0.220 |
+| + prior history + interactions | 53 | 0.2424 | 0.1601 | 0.552 | 0.231 |
+| + prior history + select (L1) | 12 | 0.2408 | 0.1329 | 0.597 | 0.214 |
+| raw (no derived) | 22 | 0.2299 | 0.1499 | 0.490 | 0.249 |
+
+Reading it honestly:
+
+- **The prior-history features are the only clear win.** PR-AUC 0.230 → 0.258 and recall 0.490 → 0.593, and it is the one change with a mechanism behind it. Everything else is inside a standard deviation.
+- **Age bands add nothing** (0.264 vs 0.258, std 0.16). Four extra columns for a non-effect, which at 19 positives is a real cost.
+- **Interactions make it worse** (0.242), and they add 29 columns. The hypothesis is rejected — there isn't enough data for a 12-way or 18-way cross to mean anything.
+- **Selection does not help.** MI selection has the best mean but drops 12 columns to get there, and its std is as large as the difference it claims. L1 selection is actively worse than no selection. No feature set here beats the EDA's single-threshold rule (recall 0.80 at an 8.5% flag rate) on any comparison.
+
+### The selection stability result is the interesting part
+
+8 of 24 features survive ≥80% of the 50 fits. The three most stable are:
+
+- `device_type_Tablet` — 49 / 50, with **0 clicks in 49 rows**
+- `gender_Other` — 49 / 50, with **0 clicks in 40 rows**
+- `ad_placement_position_Footer` — 48 / 50, with **0 clicks in 49 rows**
+
+Those aren't features the model found useful; they're small cells where nobody clicked. L1 keeps them because a dummy that perfectly separates a handful of rows gets a large coefficient, and the "signal" is memorisation of an empty cell. This is exactly the failure mode to expect when selecting from 24 columns with 19 positives, and it's why selection stays a diagnostic here rather than a step in the final pipeline.
+
+### Bugs found, both silent
+
+1. **`PairwiseInteractionFeatures` produced an all-zero block.** `pd.get_dummies` labels its columns with the bare level, but the code reindexed against prefixed names (`device_type__x__time_of_day=Mobile|Morning`), so every column was dropped and refilled with zeros. The comparison then reported "interactions add nothing" when in fact interactions were never there — identical metrics to the no-interaction run to four decimals, which is what gave it away. Fixed by renaming before reindexing, and now pinned by checks that each block is non-degenerate and has exactly one active level per row.
+2. **The selector reported `x0..x23` instead of feature names**, because `ColumnTransformer` hands it a numpy array. Fixed by pulling names from the preprocessor step and applying the selector's support mask.
+
+Both are the same class of problem as the clipping bug in Issue 1: a transform that silently produces zeros looks like a null result. The guards in `main.py` exist specifically because "no effect" and "not applied" are indistinguishable in a metrics table.
+
+### Decisions for Sprint 4
+
+- **Use `+ prior history` as the feature set.** Skip age bands and interactions; both are noise at this sample size and cost columns.
+- **Keep selection as a diagnostic, not a pipeline step.** The stability table is worth reporting; the selected features are not worth trusting.
+- **Stop treating model differences under ~0.10 PR-AUC as real.** That is one standard deviation here.
+- **The single-rule baseline still wins.** Any sprint-4 model has to beat recall 0.80 at an 8.5% flag rate, and nothing so far has.
+- **The open-set score is still missing.** Feature engineering didn't touch it, and the Sprint 3 smoke test showed held-out categories scoring *higher* than known ones. That is the next real problem, not more tabular features.

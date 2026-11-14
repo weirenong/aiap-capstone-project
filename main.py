@@ -19,6 +19,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -224,6 +225,95 @@ def main() -> None:
           "has to measure.")
     check("open-set split returns rows from the held-out category", len(unknown_df) > 0)
     check("held-out category absent from training", "Travel" not in set(X_tr["ad_category"]))
+
+    rule("9. Feature engineering: what actually earns its place")
+
+    from sklearn.compose import ColumnTransformer as _CT
+
+    from src.feature_engineering import (
+        AgeBandFeatures,
+        FeatureSelector,
+        PairwiseInteractionFeatures,
+        evaluate_pipelines,
+        selection_frequency,
+    )
+
+    def estimator():
+        return LogisticRegression(
+            max_iter=1000, class_weight="balanced", random_state=RANDOM_STATE
+        )
+
+    def assemble(pre, selector=None):
+        steps = [("preprocess", pre)]
+        if selector is not None:
+            steps.append(("select", selector))
+        steps.append(("model", estimator()))
+        return Pipeline(steps)
+
+    def extend(pre, blocks):
+        return _CT(
+            transformers=list(pre.transformers) + blocks,
+            remainder="drop",
+            verbose_feature_names_out=True,
+        )
+
+    history_pre = build_preprocessor()
+    age_pre = extend(history_pre, [("age_bands", AgeBandFeatures(), ["user_age"])])
+    interaction_pre = extend(
+        history_pre,
+        [
+            ("device_x_time", PairwiseInteractionFeatures("device_type", "time_of_day"),
+             ["device_type", "time_of_day"]),
+            ("category_x_device", PairwiseInteractionFeatures("ad_category", "device_type"),
+             ["ad_category", "device_type"]),
+        ],
+    )
+
+    X_all, y_all = df[list(FEATURES)], df[TARGET]
+
+    # Guard against the all-zero-block bug: a mis-named reindex produces a block of
+    # zeros, the model silently ignores it, and the comparison looks like "interactions
+    # add nothing" rather than "interactions were never there".
+    age_block = AgeBandFeatures().fit(X_all)
+    age_matrix = age_block.transform(X_all)
+    check("age bands are not degenerate", age_matrix.sum() > 0,
+          f"nonzero cells {int(age_matrix.sum())}")
+    check("exactly one age band per row", np.allclose(age_matrix.sum(axis=1), 1))
+
+    inter_block = PairwiseInteractionFeatures("device_type", "time_of_day").fit(X_all)
+    inter_matrix = inter_block.transform(X_all)
+    check("interactions are not degenerate", inter_matrix.sum() > 0,
+          f"nonzero cells {int(inter_matrix.sum())}")
+    check("exactly one interaction level per row", np.allclose(inter_matrix.sum(axis=1), 1))
+
+    factories = {
+        "raw (no derived)": lambda: assemble(build_preprocessor(engineer_features=False)),
+        "+prior history": lambda: assemble(history_pre),
+        "+prior history + age bands": lambda: assemble(age_pre),
+        "+prior history + interactions": lambda: assemble(interaction_pre),
+        "+prior history + select (l1)": lambda: assemble(
+            history_pre, FeatureSelector(strategy="l1", k=12)
+        ),
+        "+prior history + select (MI)": lambda: assemble(
+            history_pre, FeatureSelector(strategy="mutual_info", k=12)
+        ),
+    }
+
+    comparison = evaluate_pipelines(X_all, y_all, factories, flag_rate=TARGET_FLAG_RATE)
+    print(comparison.to_string(index=False))
+    print("\n(repeated stratified 5-fold x10 on 19 positives; compare means against the std)")
+    print("EDA single-rule baseline for scale: recall 0.80 at an 8.5% flag rate")
+
+    print("\nWhich features survive selection, across folds:")
+    stability = selection_frequency(
+        lambda: assemble(history_pre, FeatureSelector(strategy="l1", k=12)),
+        X_all,
+        y_all,
+    )
+    stable = stability[stability["share_of_fits"] >= 0.8]
+    print(stability.head(12).to_string(index=False))
+    print(f"\nselected in >=80% of the 50 fits: {len(stable)} of {len(stability)} features")
+    print(f"median feature is kept in {stability['folds_selected'].median():.0f} of 50 fits")
 
     rule("Summary")
 

@@ -37,6 +37,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+try:  # keeps both `python main.py` and `python -m src.preprocessing` working
+    from src.feature_engineering import PriorHistoryFeatures
+except ImportError:  # pragma: no cover - when src/ itself is on sys.path
+    from feature_engineering import PriorHistoryFeatures
+
 # --------------------------------------------------------------------------------------
 # Schema
 # --------------------------------------------------------------------------------------
@@ -133,61 +138,6 @@ def _as_matrix(X) -> tuple[np.ndarray, list[str] | None]:
     if isinstance(X, pd.DataFrame):
         return X.to_numpy(), list(X.columns)
     return np.asarray(X), None
-
-
-class PriorHistoryFeatures(TransformerMixin, BaseEstimator):
-    """Derived features for the numeric block, based on the EDA.
-
-    The EDA found the click rate is 15.8% when ``previous_clicks_on_similar_ads`` is at
-    or below 0.5 and effectively zero above 2, which is a step, not a line. A linear
-    model cannot represent a step, so the flag is what lets logistic regression see the
-    same structure the trees find; ``log1p`` only helps the linear model cope with the
-    right skew.
-
-    ``low_history_cut`` came from looking at the whole dataset during EDA, so it carries
-    a little optimism. It is a fixed constant rather than a fitted parameter, but Sprint
-    4 should confirm the flag still earns its place inside cross-validation.
-    """
-
-    def __init__(
-        self,
-        column: str = "previous_clicks_on_similar_ads",
-        low_history_cut: float = 0.5,
-        add_log: bool = True,
-    ):
-        self.column = column
-        self.low_history_cut = low_history_cut
-        self.add_log = add_log
-
-    def fit(self, X, y=None):
-        self.feature_names_in_ = np.asarray(
-            list(X.columns) if isinstance(X, pd.DataFrame) else [f"x{i}" for i in range(np.asarray(X).shape[1])]
-        )
-        self.n_features_in_ = len(self.feature_names_in_)
-        return self
-
-    def transform(self, X):
-        if isinstance(X, pd.DataFrame):
-            frame = X.copy()
-        else:
-            frame = pd.DataFrame(np.asarray(X), columns=self.feature_names_in_)
-
-        if self.column not in frame.columns:
-            raise ValueError(f"column {self.column!r} not present")
-
-        if self.add_log:
-            frame[f"{self.column}__log1p"] = np.log1p(frame[self.column].clip(lower=0))
-        frame[f"{self.column}__low_history"] = (
-            frame[self.column] <= self.low_history_cut
-        ).astype(float)
-        return frame
-
-    def get_feature_names_out(self, input_features=None):
-        base = list(input_features) if input_features is not None else list(self.feature_names_in_)
-        extra = [f"{self.column}__low_history"]
-        if self.add_log:
-            extra.insert(0, f"{self.column}__log1p")
-        return np.asarray(base + extra, dtype=object)
 
 
 class IQRClipper(TransformerMixin, BaseEstimator):
