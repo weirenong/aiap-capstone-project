@@ -167,3 +167,83 @@ Two readings, and they need different evaluation:
 ### Limitations of this EDA
 
 One dataset of 1,000 rows and 20 positives. Every p-value above is indicative at best — several expected cell counts in the chi-square are around 1 — and the correlations are dominated by a single-lever synthetic generator. The open-set variant of the problem can't be evaluated credibly at this sample size.
+
+---
+
+## Sprint 3: Preprocessing Pipeline
+
+Code: `src/preprocessing.py` (the module), `main.py` (validation harness, `python main.py`). The EDA notebook is unchanged; everything below is reproducible from the two files.
+
+### Design rules, and why
+
+The pipeline is built around the fact that the none class is 98% of the data, so the usual preprocessing defaults actively work against the problem.
+
+1. **Row filtering happens before the split, never inside a Pipeline.** Dropping rows inside a `Pipeline` desynchronises `X` and `y`, so eligibility rules live in `filter_eligible_rows()` and are applied once, up front.
+2. **Nothing that learns from data is fitted before the split.** Imputation values, IQR fences, scaler statistics and the category vocabulary all come from `fit` on the training fold. `main.py` asserts this rather than trusting it: the stored fences and scaler means are compared against train-only values, and against full-data values to confirm they would have differed.
+3. **No resampling in the preprocessing chain.** SMOTE belongs inside the CV loop, so `build_resampled_model()` wraps it in an imbalanced-learn pipeline. Having it as a separate function means it can't be called early by accident, which is the mistake the imbalanced-learn docs warn about.
+4. **Unseen categories encode to an all-zero block** (`handle_unknown="ignore"`). For a None problem that's the correct behaviour: an unseen category is evidence against every known class, not a reason to crash or guess. `main.py` injects a category that doesn't exist and checks the block is zeros.
+5. **The minority class is never dropped, capped or reordered.** No step removes positives.
+
+### Pipeline structure
+
+```
+numeric (2 cols):   PriorHistoryFeatures -> SimpleImputer(median) -> IQRClipper(1.5) -> StandardScaler
+categorical (5):    SimpleImputer(most_frequent) -> OneHotEncoder(handle_unknown="ignore")
+```
+
+24 features out of 7 in: 4 numeric (the two originals plus two derived) and 20 one-hot flags. Clipping comes after imputation so NaNs don't poison the quantiles, and scaling comes last so the scaler sees the values the model will actually get.
+
+`IQRClipper` clips rather than drops. With 20 positives, deleting outlier rows is not an option, and the tail beyond the fence carries little information at this sample size.
+
+### Feature engineering
+
+The EDA showed the effect of `previous_clicks_on_similar_ads` is a step, not a line: 15.8% click rate at or below 0.5, zero clicks above 2. A linear model can't represent a step, so `PriorHistoryFeatures` adds two stateless derived columns:
+
+- `previous_clicks_on_similar_ads__low_history` — `1.0` when prior clicks ≤ 0.5.
+- `previous_clicks_on_similar_ads__log1p` — to soften the right skew for the linear model.
+
+That flag is what closes most of the gap: logistic regression on the raw features reaches recall 0.50 at an 8.5% flag rate, and 0.75 with the flag added. Trees were already at 0.75 without it, which is consistent with the EDA explanation — they can learn the step on their own.
+
+Two honest caveats. The 0.5 cut was chosen while looking at the whole dataset during EDA, so it carries a little optimism even though it's a fixed constant rather than a fitted parameter; Sprint 4 should confirm inside CV that the flag still earns its place. And the flag is only useful because the dataset is synthetic and monotone — real click data would be less obliging.
+
+### A bug worth recording
+
+The first working version had the low-history flag as a column of zeros. `IQRClipper` computed IQR fences for it, and because only ~9% of rows are 1, the 25th and 75th percentiles are both 0 — so the fences were 0 and 0, and clipping silently erased the feature. Logistic regression then scored 0.50 recall while the same model outside the pipeline scored 0.75.
+
+Fixed by leaving zero-IQR columns unclipped: a binary flag or a constant has no tail to trim. The regression is now pinned by a check in `main.py` that the flag survives preprocessing with two distinct values and stays aligned with the raw rule. Worth keeping in mind for any future derived column: a clipping step applied to the whole numeric block will quietly destroy anything without spread.
+
+### What the harness checks
+
+Sections 1–8 of `main.py`, all passing:
+
+| Check | Result |
+|---|---|
+| Under-18 filter removes rows | 45 of 1000, and **1 of 20 positives (5% of the minority class)** |
+| Duplicates | none, as the EDA found |
+| Stratified split | 764 train / 15 positives, 191 test / 4 positives |
+| No NaN after transform | pass, train and test |
+| Feature count matches schema | 24 == 24 |
+| Low-history flag survives and stays aligned | pass (after the fix above) |
+| IQR fence fitted on train, not full data | pass, per column |
+| Scaler mean fitted on clipped train | pass, per column |
+| Unseen category → all-zero block | pass |
+| Determinism across two fits | identical output |
+
+### End-to-end result (smoke test, not a result)
+
+Logistic regression through the pipeline, threshold picked on train at an 8.5% flag rate, evaluated on the 191-row test split:
+
+- **TP 3, FP 16, FN 1 → recall 0.75, precision 0.16, flag rate 9.9%.**
+- EDA single-rule baseline: recall 0.80, precision 0.16 at 8.5%.
+
+So the pipeline is competitive with the rule but does not beat it, on a test set with four positives. That is not a result to report — it's evidence the plumbing is correct and a warning that the modelling sprint has to be careful about celebrating differences that are one row wide.
+
+### The open-set behaviour is still absent
+
+`make_open_set_split()` fits on five ad categories and scores the held-out one. Held-out rows score **higher** (mean predicted click probability 0.211) than known test rows (0.160), so the model does not treat them as none-of-the-above at all — if anything it considers them more clickable. That is the expected failure from Sprint 1: a closed-set classifier has no mechanism for saying "not mine", and the extra positive-class weighting pushes it the wrong way. Sprint 4 needs an actual none score (max softmax, energy, or distance) before this question can be asked properly.
+
+### Decisions left open
+
+- **The under-18 filter costs 5% of the minority class.** It's the right call ethically, but it is a real cost at 20 positives — confirm it's staying before Sprint 4, and report 19 positives rather than 20 from here on.
+- **The 0.5 low-history cut** is EDA-derived. Re-check it inside CV rather than treating it as fixed.
+- **`remove_outliers` is deliberately not implemented as row deletion.** If the modelling sprint wants to compare clipping against dropping, that's a separate branch, not a flag on this pipeline.

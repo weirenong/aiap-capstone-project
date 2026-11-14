@@ -1,5 +1,5 @@
-# Sprint 2 EDA dependencies.
-# Versions are the ones the notebook was executed with (Python 3.12).
+# Sprint 2 (EDA) + Sprint 3 (preprocessing) dependencies.
+# Versions are the ones the notebook and main.py were executed with (Python 3.12).
 
 pandas==2.2.1
 numpy==1.26.4
@@ -7,6 +7,9 @@ matplotlib==3.8.4
 seaborn==0.13.2
 scipy==1.17.1
 scikit-learn==1.4.2
+
+# used by build_resampled_model (SMOTE inside the CV fold)
+imbalanced-learn==0.12.3
 
 # to run eda.ipynb as a notebook
 ipykernel==7.4.0
